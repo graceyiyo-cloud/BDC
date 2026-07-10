@@ -97,6 +97,9 @@
         .col-bank { width: 8.5ch; max-width: 8.5ch; }
         .col-acc { width: 17ch; max-width: 17ch; }
         .col-desc { width: auto; min-width: 150px; }
+        
+        .bank-col { display: none; }
+        .show-bank-cols .bank-col { display: table-cell; }
 
         #recordTable td { text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
         #recordTable td:hover { overflow: visible; white-space: normal; word-break: break-all; position: relative; z-index: 1; background: inherit; }
@@ -318,6 +321,7 @@
                 <input type="text" id="filterDate" placeholder="輸入日期(如11502)" style="width: 130px; padding: 5px; font-weight: bold;" oninput="renderTable()">
             </div>
             <div class="button-cluster">
+                <button class="btn-info" id="btnToggleCols" style="background: #8e44ad;" onclick="toggleBankCols()">顯示銀行資訊</button>
                 <button class="btn-info" id="btnCopyClaim" style="background: #34495e;" onclick="copyToClipboard('claim', this)">📋 複製請款明細 (貼Excel)</button>
                 <button class="btn-info" id="btnCopyBank" style="background: #a67c52;" onclick="copyToClipboard('bank', this)">📋 複製匯款資料 (貼Excel)</button>
                 <button class="btn-info" style="background: #16a085;" onclick="autoFillRecordsByOwner()">按戶名補齊資料</button>
@@ -333,9 +337,9 @@
                     <th style="width: 8.5ch;">日期</th>
                     <th class="sortable col-desc" onclick="toggleSort('desc')">明細內容</th>
                     <th style="width: 90px;">金額</th>
-                    <th class="col-bank">解款行</th>
-                    <th class="col-acc">帳號</th>
-                    <th style="width: 20em;">戶名</th>
+                    <th class="col-bank bank-col">解款行</th>
+                    <th class="col-acc bank-col">帳號</th>
+                    <th class="bank-col" style="width: 20em;">戶名</th>
                     <th style="width: 3.2em;">公司</th>
                     <th class="action-cell">功能</th>
                 </tr>
@@ -416,12 +420,27 @@
         isManualClean: false, isManualRetention: false, isManualNet: false 
     };
 
+    let bankColsVisible = false;
+
     // 防止數字框滾動滾輪增減數值
     window.addEventListener('wheel', function(e) {
         if (document.activeElement.type === 'number') {
             document.activeElement.blur();
         }
     });
+
+    function toggleBankCols() {
+        bankColsVisible = !bankColsVisible;
+        const table = document.getElementById('recordTable');
+        const btn = document.getElementById('btnToggleCols');
+        if (bankColsVisible) {
+            table.classList.add('show-bank-cols');
+            btn.innerText = "隱藏銀行資訊";
+        } else {
+            table.classList.remove('show-bank-cols');
+            btn.innerText = "顯示銀行資訊";
+        }
+    }
 
     function setDocType(type) {
         currentDocType = type;
@@ -1205,9 +1224,9 @@ function toggleSort(field) {
                 <td><span class="editable" onblur="updateField('${item.id}', 'date', this.innerText)" contenteditable="true">${item.date}</span></td>
                 <td class="col-desc"><span class="editable" onblur="updateField('${item.id}', 'desc', this.innerText)" contenteditable="true">${item.desc}</span></td>
                 <td class="amount-cell"><span class="editable" onblur="updateAmountField('${item.id}', this)" contenteditable="true">${fmt.format(item.amount)}</span></td>
-                <td class="col-bank"><span class="editable" onblur="updateField('${item.id}', 'bank', this.innerText)" contenteditable="true">${item.bank || ''}</span></td>
-                <td class="col-acc"><span class="editable" onblur="updateField('${item.id}', 'acc', this.innerText)" contenteditable="true">${item.acc || ''}</span></td>
-                <td><span class="editable" onblur="updateField('${item.id}', 'owner', this.innerText)" contenteditable="true">${item.owner || ''}</span></td>
+                <td class="col-bank bank-col"><span class="editable" onblur="updateField('${item.id}', 'bank', this.innerText)" contenteditable="true">${item.bank || ''}</span></td>
+                <td class="col-acc bank-col"><span class="editable" onblur="updateField('${item.id}', 'acc', this.innerText)" contenteditable="true">${item.acc || ''}</span></td>
+                <td class="bank-col"><span class="editable" onblur="updateField('${item.id}', 'owner', this.innerText)" contenteditable="true">${item.owner || ''}</span></td>
                 <td><span class="editable" onblur="updateField('${item.id}', 'company', this.innerText)" contenteditable="true">${item.company || ''}</span></td>
                 <td class="action-cell">
                     <button class="btn-edit-tool" onclick="editRecord('${item.id}')">✎</button>
