@@ -18,9 +18,9 @@
             --dark: #1a252f;
         }
 
-        body { background-color: var(--bg); color: var(--text); font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; margin: 0; padding: 10px 15px 15px 130px; display: flex; flex-direction: column; align-items: center; }
+        body { background-color: var(--bg); color: var(--text); font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; margin: 0; padding: 10px 130px 15px 15px; display: flex; flex-direction: column; align-items: center; }
         
-        .tabs { display: flex; flex-direction: column; width: 100px; position: fixed; top: 15px; left: 15px; z-index: 1000; background: #2C3539; box-shadow: 0 5px 20px rgba(0,0,0,0.25); border-radius: 12px; overflow: hidden; }
+        .tabs { display: flex; flex-direction: column; width: 100px; position: fixed; top: 15px; right: 15px; z-index: 1000; background: #2C3539; box-shadow: 0 5px 20px rgba(0,0,0,0.25); border-radius: 12px; overflow: hidden; }
         .tab-btn { padding: 18px 8px; border: none; background: transparent; cursor: pointer; border-radius: 0; color: #A0AAB0; font-weight: bold; transition: 0.3s; font-size: 1rem; border-bottom: 1px solid #3E464A; }
         .tab-btn:hover { color: #FFFFFF; background: rgba(255,255,255,0.05); }
         .tab-btn:last-child { border-bottom: none; }
@@ -28,7 +28,7 @@
 
         @media (max-width: 768px) {
             body { padding: 10px 15px 80px 15px; }
-            .tabs { flex-direction: row; width: calc(100% - 30px); max-width: 500px; top: auto; bottom: calc(15px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); }
+            .tabs { flex-direction: row; width: calc(100% - 30px); max-width: 500px; top: auto; bottom: calc(15px + env(safe-area-inset-bottom)); left: 50%; right: auto; transform: translateX(-50%); }
             .tab-btn { padding: 12px 10px; border-bottom: none; font-size: 0.9rem; border-right: 1px solid #3E464A; }
             .tab-btn:last-child { border-right: none; }
         }
