@@ -18,7 +18,7 @@
             --dark: #1a252f;
         }
 
-        body { background-color: var(--bg); color: var(--text); font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; margin: 0; padding: 10px 130px 15px 15px; display: flex; flex-direction: column; align-items: center; }
+        body { background-color: var(--bg); color: var(--text); font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; margin: 0; padding: 10px 130px 15px 15px; display: flex; flex-direction: column; align-items: center; box-sizing: border-box; min-height: 100vh; overflow-x: hidden; }
         
         .tabs { display: flex; flex-direction: column; width: 100px; position: fixed; top: 15px; right: 15px; z-index: 1000; background: #2C3539; box-shadow: 0 5px 20px rgba(0,0,0,0.25); border-radius: 12px; overflow: hidden; }
         .tab-btn { padding: 18px 8px; border: none; background: transparent; cursor: pointer; border-radius: 0; color: #A0AAB0; font-weight: bold; transition: 0.3s; font-size: 1rem; border-bottom: 1px solid #3E464A; }
@@ -33,8 +33,8 @@
             .tab-btn:last-child { border-right: none; }
         }
 
-        .page { display: none; width: 100%; max-width: 500px; animation: fadeIn 0.3s; }
-        #listPage.page.active { display: block; width: 98vw; max-width: none; }
+        .page { display: none; width: 100%; max-width: 500px; animation: fadeIn 0.3s; box-sizing: border-box; }
+        #listPage.page.active { display: block; width: 100%; max-width: none; }
         .page.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
