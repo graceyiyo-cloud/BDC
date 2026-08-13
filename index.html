@@ -168,15 +168,16 @@
                 <label>搜尋廠商 (預覽包含帳號)</label>
                 <input type="text" id="vendorSearch" placeholder="搜尋廠商關鍵字..." oninput="searchVendor(this.value)">
                 <div id="searchResults" class="search-results"></div>
-                <div id="vendorBankInfo" style="display: none; margin-top: 8px; padding: 10px; background: #F9F9F9; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem; color: #555; line-height: 1.4;">
-                    <div style="display: flex; justify-content: space-between;"><strong>解款行：</strong><span id="displayBankCode">-</span></div>
-                    <div style="display: flex; justify-content: space-between;"><strong>帳號：</strong><span id="displayAccount">-</span></div>
-                    <div style="display: flex; justify-content: space-between;"><strong>戶名：</strong><span id="displayOwner">-</span></div>
-                </div>
                 <input type="hidden" id="tempBankCode">
                 <input type="hidden" id="tempAccount">
                 <input type="hidden" id="tempOwner">
             </div>
+        </div>
+
+        <div id="vendorBankInfo" style="display: none; margin-bottom: 15px; padding: 10px; background: #F9F9F9; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem; color: #555; line-height: 1.4;">
+            <div style="display: flex; justify-content: space-between;"><strong>解款行：</strong><span id="displayBankCode">-</span></div>
+            <div style="display: flex; justify-content: space-between;"><strong>帳號：</strong><span id="displayAccount">-</span></div>
+            <div style="display: flex; justify-content: space-between;"><strong>戶名：</strong><span id="displayOwner">-</span></div>
         </div>
 
         <div class="row">
