@@ -168,6 +168,11 @@
                 <label>搜尋廠商 (預覽包含帳號)</label>
                 <input type="text" id="vendorSearch" placeholder="搜尋廠商關鍵字..." oninput="searchVendor(this.value)">
                 <div id="searchResults" class="search-results"></div>
+                <div id="vendorBankInfo" style="display: none; margin-top: 8px; padding: 10px; background: #F9F9F9; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem; color: #555; line-height: 1.4;">
+                    <div style="display: flex; justify-content: space-between;"><strong>解款行：</strong><span id="displayBankCode">-</span></div>
+                    <div style="display: flex; justify-content: space-between;"><strong>帳號：</strong><span id="displayAccount">-</span></div>
+                    <div style="display: flex; justify-content: space-between;"><strong>戶名：</strong><span id="displayOwner">-</span></div>
+                </div>
                 <input type="hidden" id="tempBankCode">
                 <input type="hidden" id="tempAccount">
                 <input type="hidden" id="tempOwner">
@@ -471,6 +476,10 @@
     }
 
     function searchVendor(val) {
+        document.getElementById('vendorBankInfo').style.display = 'none';
+        document.getElementById('tempBankCode').value = "";
+        document.getElementById('tempAccount').value = "";
+        document.getElementById('tempOwner').value = "";
         const resultsDiv = document.getElementById('searchResults');
         if (!val) { resultsDiv.style.display = 'none'; return; }
         const filtered = vendors.filter(v => v.name.includes(val) || v.owner.includes(val) || (v.account && v.account.includes(val)));
@@ -493,6 +502,11 @@
         document.getElementById('tempAccount').value = acc || "";
         document.getElementById('tempOwner').value = owner || "";
         document.getElementById('searchResults').style.display = 'none';
+
+        document.getElementById('displayBankCode').innerText = bank || "無";
+        document.getElementById('displayAccount').innerText = acc || "無";
+        document.getElementById('displayOwner').innerText = owner || "無";
+        document.getElementById('vendorBankInfo').style.display = 'block';
 
         const lastRecord = [...db].reverse().find(r => r.owner === owner);
         if (lastRecord && lastRecord.settings) {
@@ -1112,6 +1126,7 @@
                 else el.value = "";
             }
         });
+        document.getElementById('vendorBankInfo').style.display = 'none';
         document.getElementById('isTaxInclusiveRetention').checked = false;
         document.getElementById('forceTaxInclusiveView').checked = false;
         document.getElementById('processFormula').innerHTML = "請輸入資料...";
@@ -1286,6 +1301,11 @@ function toggleSort(field) {
         document.getElementById('tempBankCode').value = item.bank || "";
         document.getElementById('tempAccount').value = item.acc || "";
         document.getElementById('tempOwner').value = item.owner || "";
+
+        document.getElementById('displayBankCode').innerText = item.bank || "無";
+        document.getElementById('displayAccount').innerText = item.acc || "無";
+        document.getElementById('displayOwner').innerText = item.owner || "無";
+        document.getElementById('vendorBankInfo').style.display = (item.bank || item.acc || item.owner) ? 'block' : 'none';
 
         const s = item.settings;
         if (s) {
