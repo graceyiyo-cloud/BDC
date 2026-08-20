@@ -656,7 +656,7 @@
         reader.onload = function(e) {
             const text = e.target.result;
             const rows = text.split('\n').filter(r => r.trim() !== "");
-            rows.slice(1).forEach(row => {
+            const parseCSVRow = row => {
                 const cols = [];
                 let current = '';
                 let inQuotes = false;
@@ -675,6 +675,50 @@
                     }
                 }
                 cols.push(current.trim().replace(/^=/, '').replace(/^'/, ''));
+                return cols;
+            };
+
+            const headers = parseCSVRow(rows[0]).map((header, index) =>
+                (index === 0 ? header.replace(/^\ufeff/, '') : header).trim()
+            );
+            const isBankAccountList = headers[0] === '銀行' && headers[1] === '分行' && headers.includes('帳號');
+
+            if (isBankAccountList) {
+                const bankIndex = headers.indexOf('銀行');
+                const branchIndex = headers.indexOf('分行');
+                const accountIndex = headers.indexOf('帳號');
+                const normalizeAccount = value => String(value || '').replace(/[^0-9]/g, '');
+                let matchedCount = 0;
+                let updatedCount = 0;
+
+                rows.slice(1).forEach(row => {
+                    const cols = parseCSVRow(row);
+                    const account = normalizeAccount(cols[accountIndex]);
+                    if (!account) return;
+                    const vendor = vendors.find(v => normalizeAccount(v.account) === account);
+                    if (!vendor) return;
+                    matchedCount++;
+                    let changed = false;
+                    if (!String(vendor.bankName || '').trim() && cols[bankIndex]) {
+                        vendor.bankName = cols[bankIndex].trim();
+                        changed = true;
+                    }
+                    if (!String(vendor.branchName || '').trim() && cols[branchIndex]) {
+                        vendor.branchName = cols[branchIndex].trim();
+                        changed = true;
+                    }
+                    if (changed) updatedCount++;
+                });
+
+                localStorage.setItem('vendorList', JSON.stringify(vendors));
+                renderVendorTable();
+                alert(`帳號比對完成！符合 ${matchedCount} 筆，已補齊 ${updatedCount} 筆銀行／分行資料。`);
+                input.value = "";
+                return;
+            }
+
+            rows.slice(1).forEach(row => {
+                const cols = parseCSVRow(row);
                 if (cols.length >= 6) {
                     vendors.push({ id: Date.now() + Math.random(), name: cols[0], bankName: cols[1], branchName: cols[2], bankCode: cols[3], account: cols[4], owner: cols[5] });
                 } else if (cols.length >= 4) {
