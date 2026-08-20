@@ -504,9 +504,9 @@
         const filtered = vendors.filter(v => v.name.includes(val) || v.owner.includes(val) || (v.account && v.account.includes(val)));
         if (filtered.length > 0) {
             resultsDiv.innerHTML = filtered.map(v => `
-                <div class="search-item" onclick="selectVendor('${v.name}', '${v.bankCode}', '${v.account}', '${v.owner}')">
+                <div class="search-item" onclick="selectVendor('${v.id}')">
                     <div><strong>${v.name}</strong> (${v.owner})</div>
-                    <div style="font-size:0.8rem; color:#666">行庫：${v.bankCode || ''} | 帳號：${v.account || ''}</div>
+                    <div style="font-size:0.8rem; color:#666">行庫：${[v.bankName, v.branchName].filter(Boolean).join(' ')} ${v.bankCode || ''} | 帳號：${v.account || ''}</div>
                 </div>
             `).join('');
             resultsDiv.style.display = 'block';
@@ -515,14 +515,18 @@
         }
     }
 
-    function selectVendor(name, bank, acc, owner) {
+    function selectVendor(id) {
+        const vendor = vendors.find(v => v.id == id);
+        if (!vendor) return;
+        const { name, bankCode: bank, account: acc, owner, bankName, branchName } = vendor;
         document.getElementById('vendorSearch').value = name;
         document.getElementById('tempBankCode').value = bank || "";
         document.getElementById('tempAccount').value = acc || "";
         document.getElementById('tempOwner').value = owner || "";
         document.getElementById('searchResults').style.display = 'none';
 
-        document.getElementById('displayBankCode').innerText = bank || "無";
+        const bankLocation = [bankName, branchName].filter(Boolean).join(' ');
+        document.getElementById('displayBankCode').innerText = bank ? `${bankLocation ? `（${bankLocation}）` : ''}${bank}` : "無";
         document.getElementById('displayAccount').innerText = acc || "無";
         document.getElementById('displayOwner').innerText = owner || "無";
         document.getElementById('vendorBankInfo').style.display = 'block';
