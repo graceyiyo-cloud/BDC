@@ -1401,7 +1401,7 @@ function toggleSort(field) {
                 }
 
                 if (mergeCandidates.length > 1) {
-                    let mergedDesc = mergeCandidates.map(c => `${c.desc}=${fmt.format(c.amount)}`).join('+');
+                    let mergedDesc = mergeCandidates.map(c => `${c.desc}=${fmt.format(c.amount)}`).join('\r\n');
                     let totalAmount = mergeCandidates.reduce((sum, c) => sum + c.amount, 0);
                     
                     mergedItem.desc = mergedDesc;
@@ -1418,11 +1418,19 @@ function toggleSort(field) {
             grouped.push(mergedItem);
         }
 
+        // Excel/試算表會將未加引號的換行視為新的一列；以雙引號包住
+        // 含換行的欄位，才能在貼上後保留為同一格內的分行文字。
+        const toTsvCell = value => {
+            const cell = String(value ?? '');
+            return /[\t\r\n"]/.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell;
+        };
+        const toTsvRow = values => values.map(toTsvCell).join('\t');
+
         let text = "";
         if (type === 'claim') {
-            text = grouped.map(i => `${i.date}\t${i.desc}\t${i.amount}`).join('\n');
+            text = grouped.map(i => toTsvRow([i.date, i.desc, i.amount])).join('\r\n');
         } else if (type === 'bank') {
-            text = grouped.map(i => `${i.date}\t${i.bank}\t${i.acc}\t${i.owner}\t${i.amount}`).join('\n');
+            text = grouped.map(i => toTsvRow([i.date, i.bank, i.acc, i.owner, i.amount])).join('\r\n');
         }
         
         const textArea = document.createElement("textarea");
