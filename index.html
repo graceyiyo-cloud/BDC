@@ -143,8 +143,10 @@
         .vendor-form { background: #F4F4F1; padding: 15px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 20px; }
         #vendorPage.page { max-width: 1100px; }
         #vendorTable { table-layout: fixed; }
-        #vendorTable .vendor-code-col { width: 8ch; }
-        #vendorTable .vendor-action-col { width: 92px; }
+        #vendorTable .vendor-row-copy-col { width: 38px; }
+        #vendorTable .vendor-branch-col { width: 12ch; }
+        #vendorTable .vendor-code-col { width: 10ch; }
+        #vendorTable .vendor-action-col { width: 38px; }
         #vendorTable td { word-break: break-all; }
         .btn-copy-small { border: 1px solid var(--info); background: white; color: var(--info); border-radius: 4px; padding: 3px 6px; cursor: pointer; font-size: 0.72rem; font-weight: bold; white-space: nowrap; }
         .vendor-owner-cell { display: flex; align-items: center; gap: 4px; }
@@ -400,9 +402,10 @@
         <table id="vendorTable">
             <thead>
                 <tr>
+                    <th class="vendor-row-copy-col" title="整列複製">📋</th>
                     <th style="width: 16%;">廠商名稱</th>
                     <th style="width: 12%;">銀行</th>
-                    <th style="width: 13%;">分行</th>
+                    <th class="vendor-branch-col">分行</th>
                     <th class="vendor-code-col">解款行</th>
                     <th style="width: 17%;">帳號</th>
                     <th style="width: 20%;">戶名</th>
@@ -705,20 +708,20 @@
         );
         tbody.innerHTML = filteredVendors.map(v => `
             <tr>
+                <td class="action-cell vendor-row-copy-col"><button class="btn-copy-small" title="整列複製" aria-label="整列複製" onclick="copyVendorRow('${v.id}', this)">📋</button></td>
                 <td><span class="editable" onblur="updateVendorField('${v.id}', 'name', this.innerText)" contenteditable="true">${v.name}</span></td>
                 <td><span class="editable" onblur="updateVendorField('${v.id}', 'bankName', this.innerText)" contenteditable="true">${v.bankName || ''}</span></td>
                 <td><span class="editable" onblur="updateVendorField('${v.id}', 'branchName', this.innerText)" contenteditable="true">${v.branchName || ''}</span></td>
                 <td><span class="editable" onblur="updateVendorField('${v.id}', 'bankCode', this.innerText)" contenteditable="true">${v.bankCode || ''}</span></td>
                 <td><span class="editable" onblur="updateVendorField('${v.id}', 'account', this.innerText)" contenteditable="true">${v.account || ''}</span></td>
-                <td><div class="vendor-owner-cell"><span class="editable" onblur="updateVendorField('${v.id}', 'owner', this.innerText)" contenteditable="true">${v.owner || ''}</span><button class="btn-copy-small" onclick="copyVendorOwner('${v.id}', this)">複製</button></div></td>
+                <td><div class="vendor-owner-cell"><span class="editable" onblur="updateVendorField('${v.id}', 'owner', this.innerText)" contenteditable="true">${v.owner || ''}</span><button class="btn-copy-small" title="複製戶名" aria-label="複製戶名" onclick="copyVendorOwner('${v.id}', this)">📋</button></div></td>
                 <td class="action-cell vendor-action-col">
-                    <button class="btn-copy-small" onclick="copyVendorRow('${v.id}', this)">整列</button>
                     <button class="btn-del" onclick="deleteVendor('${v.id}')">×</button>
                 </td>
             </tr>
         `).join('');
         if (filteredVendors.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888; padding:20px;">找不到符合的廠商資料</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#888; padding:20px;">找不到符合的廠商資料</td></tr>';
         }
     }
 
@@ -730,7 +733,7 @@
         try {
             document.execCommand('copy');
             const originalText = btn.innerText;
-            btn.innerText = '已複製';
+            btn.innerText = '✅';
             setTimeout(() => { btn.innerText = originalText; }, 1200);
         } catch (err) {}
         document.body.removeChild(textArea);
@@ -740,8 +743,7 @@
         const vendor = vendors.find(v => v.id == id);
         if (!vendor) return;
         const clean = value => String(value || '').replace(/[\t\r\n]+/g, ' ');
-        const excelText = value => value ? `="${clean(value).replace(/"/g, '""')}"` : '';
-        const cells = [clean(vendor.bankName), clean(vendor.branchName), excelText(vendor.bankCode), excelText(vendor.account), clean(vendor.owner)];
+        const cells = [vendor.bankName, vendor.branchName, vendor.bankCode, vendor.account, vendor.owner].map(clean);
         copyVendorText(cells.join('\t'), btn);
     }
 
