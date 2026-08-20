@@ -141,6 +141,14 @@
         .drag-handle:active { cursor: grabbing; background-color: #eee; }
 
         .vendor-form { background: #F4F4F1; padding: 15px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 20px; }
+        #vendorPage.page { max-width: 1100px; }
+        #vendorTable { table-layout: fixed; }
+        #vendorTable .vendor-code-col { width: 8ch; }
+        #vendorTable .vendor-action-col { width: 92px; }
+        #vendorTable td { word-break: break-all; }
+        .btn-copy-small { border: 1px solid var(--info); background: white; color: var(--info); border-radius: 4px; padding: 3px 6px; cursor: pointer; font-size: 0.72rem; font-weight: bold; white-space: nowrap; }
+        .vendor-owner-cell { display: flex; align-items: center; gap: 4px; }
+        .vendor-owner-cell .editable { flex: 1; min-width: 0; }
     </style>
 </head>
 <body>
@@ -358,16 +366,18 @@
     </div>
 </div>
 
-<div id="vendorPage" class="page" style="max-width: 850px;">
+<div id="vendorPage" class="page">
     <div class="list-card">
         <div class="section-title">廠商匯款資料管理</div>
         <div class="vendor-form">
             <div class="section-title" style="border-left: 4px solid var(--accent); color: var(--accent);">手動新增廠商</div>
             <div class="row">
                 <div class="col"><label>廠商名稱</label><input type="text" id="newVName" placeholder="公司名"></div>
-                <div class="col"><label>解款行</label><input type="text" id="newVBank" placeholder="代號+名稱"></div>
+                <div class="col"><label>銀行</label><input type="text" id="newVBankName" placeholder="例如：第一銀行"></div>
+                <div class="col"><label>分行</label><input type="text" id="newVBranchName" placeholder="例如：中山分行"></div>
             </div>
             <div class="row">
+                <div class="col"><label>解款行</label><input type="text" id="newVBank" placeholder="例如：0071234"></div>
                 <div class="col"><label>收款帳號</label><input type="text" id="newVAcc" placeholder="銀行帳號"></div>
                 <div class="col"><label>收款戶名</label><input type="text" id="newVOwner" placeholder="戶名"></div>
             </div>
@@ -384,14 +394,19 @@
                 <button class="btn-save" style="background: #eee; color: var(--danger); width: auto; padding: 10px 20px; margin: 0; border: 1px solid var(--danger);" onclick="clearVendors()">清空廠商庫</button>
             </div>
         </div>
+        <div style="margin: 0 0 12px;">
+            <input type="search" id="vendorListSearch" placeholder="搜尋廠商、銀行、分行、解款行、帳號或戶名..." oninput="renderVendorTable(this.value)">
+        </div>
         <table id="vendorTable">
             <thead>
                 <tr>
-                    <th style="width: 25%;">廠商名稱</th>
-                    <th style="width: 20%;">解款行</th>
-                    <th style="width: 20%;">帳號</th>
+                    <th style="width: 16%;">廠商名稱</th>
+                    <th style="width: 12%;">銀行</th>
+                    <th style="width: 13%;">分行</th>
+                    <th class="vendor-code-col">解款行</th>
+                    <th style="width: 17%;">帳號</th>
                     <th style="width: 20%;">戶名</th>
-                    <th class="action-cell">功能</th>
+                    <th class="action-cell vendor-action-col">功能</th>
                 </tr>
             </thead>
             <tbody id="vendorTableBody"></tbody>
@@ -614,14 +629,16 @@
 
     function manualAddVendor() {
         const name = document.getElementById('newVName').value.trim();
+        const bankName = document.getElementById('newVBankName').value.trim();
+        const branchName = document.getElementById('newVBranchName').value.trim();
         const bank = document.getElementById('newVBank').value.trim();
         const acc = document.getElementById('newVAcc').value.trim();
         const owner = document.getElementById('newVOwner').value.trim();
         if(!name || !acc) { alert("廠商名稱與帳號為必填！"); return; }
-        vendors.push({ id: Date.now() + Math.random(), name, bankCode: bank, account: acc, owner });
+        vendors.push({ id: Date.now() + Math.random(), name, bankName, branchName, bankCode: bank, account: acc, owner });
         localStorage.setItem('vendorList', JSON.stringify(vendors));
         renderVendorTable();
-        ['newVName', 'newVBank', 'newVAcc', 'newVOwner'].forEach(id => document.getElementById(id).value = "");
+        ['newVName', 'newVBankName', 'newVBranchName', 'newVBank', 'newVAcc', 'newVOwner'].forEach(id => document.getElementById(id).value = "");
         alert("廠商新增成功！");
     }
 
@@ -633,8 +650,27 @@
             const text = e.target.result;
             const rows = text.split('\n').filter(r => r.trim() !== "");
             rows.slice(1).forEach(row => {
-                const cols = row.split(',').map(s => s.trim().replace(/^="|"$/g, '').replace(/^'/, ''));
-                if (cols.length >= 4) {
+                const cols = [];
+                let current = '';
+                let inQuotes = false;
+                for (let i = 0; i < row.length; i++) {
+                    const char = row[i];
+                    if (char === '"' && inQuotes && row[i + 1] === '"') {
+                        current += '"';
+                        i++;
+                    } else if (char === '"') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        cols.push(current.trim().replace(/^=/, '').replace(/^'/, ''));
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                cols.push(current.trim().replace(/^=/, '').replace(/^'/, ''));
+                if (cols.length >= 6) {
+                    vendors.push({ id: Date.now() + Math.random(), name: cols[0], bankName: cols[1], branchName: cols[2], bankCode: cols[3], account: cols[4], owner: cols[5] });
+                } else if (cols.length >= 4) {
                     vendors.push({ id: Date.now() + Math.random(), name: cols[0], bankCode: cols[1], account: cols[2], owner: cols[3] });
                 }
             });
@@ -648,9 +684,10 @@
 
     function exportVendorExcel() {
         if(vendors.length === 0) return alert("目前無廠商資料可匯出");
-        let csvContent = "\ufeff廠商名稱,解款行,帳號,戶名\n";
+        let csvContent = "\ufeff廠商名稱,銀行,分行,解款行,帳號,戶名\n";
         vendors.forEach(v => {
-            csvContent += `"${v.name}","${v.bankCode || ''}","${v.account || ''}","${v.owner || ''}"\n`;
+            csvContent += [v.name, v.bankName, v.branchName, v.bankCode, v.account, v.owner]
+                .map(value => `"${String(value || '').replace(/"/g, '""')}"`).join(',') + '\n';
         });
         const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
@@ -659,19 +696,59 @@
         link.click();
     }
 
-    function renderVendorTable() {
+    function renderVendorTable(searchValue = document.getElementById('vendorListSearch')?.value || '') {
         const tbody = document.getElementById('vendorTableBody');
-        tbody.innerHTML = vendors.map(v => `
+        const keyword = searchValue.trim().toLowerCase();
+        const filteredVendors = vendors.filter(v => !keyword ||
+            [v.name, v.bankName, v.branchName, v.bankCode, v.account, v.owner]
+                .some(value => String(value || '').toLowerCase().includes(keyword))
+        );
+        tbody.innerHTML = filteredVendors.map(v => `
             <tr>
                 <td><span class="editable" onblur="updateVendorField('${v.id}', 'name', this.innerText)" contenteditable="true">${v.name}</span></td>
+                <td><span class="editable" onblur="updateVendorField('${v.id}', 'bankName', this.innerText)" contenteditable="true">${v.bankName || ''}</span></td>
+                <td><span class="editable" onblur="updateVendorField('${v.id}', 'branchName', this.innerText)" contenteditable="true">${v.branchName || ''}</span></td>
                 <td><span class="editable" onblur="updateVendorField('${v.id}', 'bankCode', this.innerText)" contenteditable="true">${v.bankCode || ''}</span></td>
                 <td><span class="editable" onblur="updateVendorField('${v.id}', 'account', this.innerText)" contenteditable="true">${v.account || ''}</span></td>
-                <td><span class="editable" onblur="updateVendorField('${v.id}', 'owner', this.innerText)" contenteditable="true">${v.owner || ''}</span></td>
-                <td class="action-cell">
+                <td><div class="vendor-owner-cell"><span class="editable" onblur="updateVendorField('${v.id}', 'owner', this.innerText)" contenteditable="true">${v.owner || ''}</span><button class="btn-copy-small" onclick="copyVendorOwner('${v.id}', this)">複製</button></div></td>
+                <td class="action-cell vendor-action-col">
+                    <button class="btn-copy-small" onclick="copyVendorRow('${v.id}', this)">整列</button>
                     <button class="btn-del" onclick="deleteVendor('${v.id}')">×</button>
                 </td>
             </tr>
         `).join('');
+        if (filteredVendors.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#888; padding:20px;">找不到符合的廠商資料</td></tr>';
+        }
+    }
+
+    function copyVendorText(text, btn) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            const originalText = btn.innerText;
+            btn.innerText = '已複製';
+            setTimeout(() => { btn.innerText = originalText; }, 1200);
+        } catch (err) {}
+        document.body.removeChild(textArea);
+    }
+
+    function copyVendorRow(id, btn) {
+        const vendor = vendors.find(v => v.id == id);
+        if (!vendor) return;
+        const clean = value => String(value || '').replace(/[\t\r\n]+/g, ' ');
+        const excelText = value => value ? `="${clean(value).replace(/"/g, '""')}"` : '';
+        const cells = [clean(vendor.bankName), clean(vendor.branchName), excelText(vendor.bankCode), excelText(vendor.account), clean(vendor.owner)];
+        copyVendorText(cells.join('\t'), btn);
+    }
+
+    function copyVendorOwner(id, btn) {
+        const vendor = vendors.find(v => v.id == id);
+        if (!vendor) return;
+        copyVendorText(vendor.owner || '', btn);
     }
 
     function updateVendorField(id, field, value) {
