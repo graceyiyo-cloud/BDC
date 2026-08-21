@@ -140,6 +140,10 @@
         .company-result-name { font-weight: bold; color: var(--text); }
         .company-result-tax-id { color: var(--accent); font-family: monospace; }
         .company-result-line .btn-copy-small { border: none; background: transparent; padding: 2px; font-size: 0.8rem; }
+        .modal-schedule { margin-bottom: 18px; }
+        .modal-schedule-row { display: flex; align-items: baseline; gap: 12px; margin: 4px 0; }
+        .modal-schedule-date { color: var(--accent); font-family: monospace; font-weight: bold; }
+        .modal-schedule-amount { font-family: monospace; font-weight: bold; }
         
         .draggable-row { transition: background 0.2s; }
         .draggable-row.dragging { opacity: 0.5; background: #f0f0f0; }
@@ -444,6 +448,8 @@
         <div class="company-lookup-box">
             <div id="companyLookupResults">請稍候，正在搜尋公司資料…</div>
         </div>
+        <div class="section-title">付款排程</div>
+        <div id="modalPaymentSchedule" class="modal-schedule"></div>
         <div class="section-title">計算過程紀錄</div>
         <div id="modalBody" class="formula"></div>
     </div>
@@ -1572,10 +1578,37 @@ function toggleSort(field) {
         }
     }
 
+    function renderModalPaymentSchedule(record) {
+        const container = document.getElementById('modalPaymentSchedule');
+        const groupId = String(record.id).split('_')[0];
+        const scheduleItems = db
+            .filter(item => String(item.id).split('_')[0] === groupId)
+            .sort((a, b) => Number(String(a.id).split('_')[1] || 0) - Number(String(b.id).split('_')[1] || 0));
+        container.innerHTML = '';
+        scheduleItems.forEach((item, index) => {
+            const row = document.createElement('div');
+            row.className = 'modal-schedule-row';
+            const installment = document.createElement('span');
+            installment.textContent = scheduleItems.length > 1 ? `第${index + 1}期` : '付款日';
+            const date = document.createElement('span');
+            date.className = 'modal-schedule-date';
+            const rawDate = String(item.date || '');
+            date.textContent = /^(\d{3})(\d{2})(\d{2})$/.test(rawDate)
+                ? rawDate.replace(/^(\d{3})(\d{2})(\d{2})$/, '$1/$2/$3')
+                : rawDate;
+            const amount = document.createElement('span');
+            amount.className = 'modal-schedule-amount';
+            amount.textContent = `$${fmt.format(item.amount || 0)}`;
+            row.append(installment, date, amount);
+            container.appendChild(row);
+        });
+    }
+
     function showFormula(id) {
         const record = db.find(i => i.id === id);
         if(record) {
             document.getElementById('modalBody').innerHTML = record.formula;
+            renderModalPaymentSchedule(record);
             document.getElementById('infoModal').style.display = 'flex';
             const normalizeAccount = value => String(value || '').replace(/[^0-9]/g, '');
             const account = normalizeAccount(record.acc);
