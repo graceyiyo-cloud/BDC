@@ -73,7 +73,7 @@
         .btn-save { width: 100%; padding: 14px; margin-top: 15px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 1rem; transition: 0.2s; }
         .btn-save:hover { opacity: 0.9; }
         .btn-excel { padding: 10px 20px; background: var(--success); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .btn-info { padding: 10px 20px; background: var(--info); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-info { padding: 10px 20px; background: var(--info); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
         .btn-reset { width: 100%; padding: 10px; margin-top: 10px; color: #666; border: 1px solid var(--border); background: #E8E7E0; cursor: pointer; border-radius: 8px; font-size: 0.8rem; font-weight: bold; }
         
         .check-label { display: flex; align-items: center; gap: 5px; cursor: pointer; color: var(--text); font-weight: bold; }
@@ -117,6 +117,7 @@
         .btn-calc:hover { background: var(--info); color: white; }
         .btn-edit-tool { color: var(--accent); border: 1.5px solid var(--accent); background: white; cursor: pointer; border-radius: 4px; padding: 2px 5px; font-size: 0.7rem; font-weight: bold; margin-right: 5px; transition: 0.2s; vertical-align: middle; }
         .btn-del { color: var(--danger); border: none; background: none; cursor: pointer; font-weight: bold; font-size: 1.4rem; line-height: 1; vertical-align: middle; }
+        .ui-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vertical-align: -0.125em; flex: 0 0 auto; }
         
         .summary-bar { margin-top: 15px; padding: 15px; background: #E8E7E0; border-radius: 8px; text-align: right; font-size: 1.1rem; color: #000; border: 1px solid var(--border); }
         .summary-bar strong { color: #d35400; font-size: 1.4rem; text-shadow: 1px 1px 0px #fff; }
@@ -131,7 +132,7 @@
 
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
         .modal-content { background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 620px; max-height: 85vh; overflow-y: auto; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
-        .close-modal { position: absolute; right: 15px; top: 15px; font-size: 1.5rem; cursor: pointer; color: #999; }
+        .close-modal { position: absolute; right: 15px; top: 15px; font-size: 1.25rem; cursor: pointer; color: #999; border: none; background: transparent; padding: 3px; }
         .company-lookup-box { margin-bottom: 16px; }
         .company-result-row { margin-bottom: 10px; }
         .company-result-line { display: flex; align-items: center; justify-content: flex-start; gap: 5px; }
@@ -162,6 +163,14 @@
     </style>
 </head>
 <body>
+
+<svg aria-hidden="true" style="position:absolute; width:0; height:0; overflow:hidden;">
+    <symbol id="icon-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></symbol>
+    <symbol id="icon-scissors" viewBox="0 0 24 24"><circle cx="6" cy="7" r="3"></circle><path d="M8.12 8.12 12 12"></path><path d="M20 4 8.12 15.88"></path><circle cx="6" cy="17" r="3"></circle><path d="m14.8 14.8 5.2 5.2"></path></symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"></path></symbol>
+    <symbol id="icon-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.986L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path><path d="m15 5 4 4"></path></symbol>
+    <symbol id="icon-x" viewBox="0 0 24 24"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></symbol>
+</svg>
 
 <div class="tabs">
     <button class="tab-btn active" onclick="switchPage('calcPage', this)">計算工具</button>
@@ -312,13 +321,13 @@
                 </label>
             </div>
             <div id="processFormula" class="formula">請輸入資料...</div>
-            <button class="btn-info" style="width: 100%; margin-top: 10px; background: var(--success);" onclick="copyFormulaText(this)">📋 複製明細文字</button>
+            <button class="btn-info" style="width: 100%; margin-top: 10px; background: var(--success);" onclick="copyFormulaText(this)"><svg class="ui-icon" aria-hidden="true"><use href="#icon-copy"></use></svg>複製明細文字</button>
             <div class="payment-result" id="paymentDetail"></div>
         </div>
 
         <div class="row" style="margin-top: 15px;">
             <div class="col" style="flex: 1.2;">
-                <button type="button" class="btn-info" style="width: 100%; padding: 14px; font-size: 1rem; background: var(--accent);" onclick="copyLastPart(this)">✂️ 複製結尾</button>
+                <button type="button" class="btn-info" style="width: 100%; padding: 14px; font-size: 1rem; background: var(--accent);" onclick="copyLastPart(this)"><svg class="ui-icon" aria-hidden="true"><use href="#icon-scissors"></use></svg>複製結尾</button>
             </div>
             <div class="col" style="flex: 2;">
                 <button class="btn-save" id="saveBtn" style="margin-top: 0;" onclick="saveData()">儲存此筆排程</button>
@@ -348,8 +357,8 @@
             </div>
             <div class="button-cluster">
                 <button class="btn-info" id="btnToggleCols" style="background: #8e44ad;" onclick="toggleBankCols()">顯示銀行資訊</button>
-                <button class="btn-info" id="btnCopyClaim" style="background: #34495e;" onclick="copyToClipboard('claim', this)">📋 複製請款明細 (貼Excel)</button>
-                <button class="btn-info" id="btnCopyBank" style="background: #a67c52;" onclick="copyToClipboard('bank', this)">📋 複製匯款資料 (貼Excel)</button>
+                <button class="btn-info" id="btnCopyClaim" style="background: #34495e;" onclick="copyToClipboard('claim', this)"><svg class="ui-icon" aria-hidden="true"><use href="#icon-copy"></use></svg>複製請款明細 (貼Excel)</button>
+                <button class="btn-info" id="btnCopyBank" style="background: #a67c52;" onclick="copyToClipboard('bank', this)"><svg class="ui-icon" aria-hidden="true"><use href="#icon-copy"></use></svg>複製匯款資料 (貼Excel)</button>
                 <button class="btn-info" style="background: #16a085;" onclick="autoFillRecordsByOwner()">按戶名補齊資料</button>
                 <button class="btn-save" style="background: #a93226; width: auto; padding: 10px 20px; margin: 0;" onclick="clearData()">清空所有排程</button>
             </div>
@@ -413,7 +422,7 @@
         <table id="vendorTable">
             <thead>
                 <tr>
-                    <th class="vendor-row-copy-col" title="整列複製">📋</th>
+                    <th class="vendor-row-copy-col" title="整列複製"><svg class="ui-icon" aria-hidden="true"><use href="#icon-copy"></use></svg></th>
                     <th style="width: 16%;">廠商名稱</th>
                     <th class="vendor-tax-col">統編</th>
                     <th style="width: 12%;">銀行</th>
@@ -431,7 +440,7 @@
 
 <div id="infoModal" class="modal" onclick="document.getElementById('infoModal').style.display='none'">
     <div class="modal-content" onclick="event.stopPropagation()">
-        <span class="close-modal" onclick="document.getElementById('infoModal').style.display='none'">&times;</span>
+        <button class="close-modal" type="button" title="關閉" aria-label="關閉" onclick="document.getElementById('infoModal').style.display='none'"><svg class="ui-icon" aria-hidden="true"><use href="#icon-x"></use></svg></button>
         <div class="company-lookup-box">
             <div id="companyLookupResults">請稍候，正在搜尋公司資料…</div>
         </div>
@@ -452,6 +461,16 @@
     let currentCalcBase = '未稅'; 
     let editingGroupId = null;
     const companyLookupCache = new Map();
+
+    function uiIcon(name) {
+        return `<svg class="ui-icon" aria-hidden="true"><use href="#icon-${name}"></use></svg>`;
+    }
+
+    function showCopyFeedback(btn, label = '', duration = 1200) {
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = `${uiIcon('check')}${label ? ` ${label}` : ''}`;
+        setTimeout(() => { btn.innerHTML = originalHtml; }, duration);
+    }
 
     let lastCalcState = { 
         raw: 0, tax: 0, total: 0, cRate: 0, cleanFee: 0, subtotal: 0, rRate: 0, retention: 0, 
@@ -598,9 +617,7 @@
         textArea.select();
         try {
             document.execCommand('copy');
-            const originalText = btn.innerText;
-            btn.innerText = "✅ 已複製";
-            setTimeout(() => { btn.innerText = originalText; }, 1200);
+            showCopyFeedback(btn, '已複製');
         } catch (err) {}
         document.body.removeChild(textArea);
     }
@@ -780,16 +797,16 @@
         );
         tbody.innerHTML = filteredVendors.map(v => `
             <tr>
-                <td class="action-cell vendor-row-copy-col"><button class="btn-copy-small" title="整列複製" aria-label="整列複製" onclick="copyVendorRow('${v.id}', this)">📋</button></td>
+                <td class="action-cell vendor-row-copy-col"><button class="btn-copy-small" title="整列複製" aria-label="整列複製" onclick="copyVendorRow('${v.id}', this)">${uiIcon('copy')}</button></td>
                 <td><span class="editable" onblur="updateVendorField('${v.id}', 'name', this.innerText)" contenteditable="true">${v.name}</span></td>
                 <td><span class="editable" onblur="updateVendorTaxId('${v.id}', this)" contenteditable="true">${v.taxId || ''}</span></td>
                 <td><span class="editable" onblur="updateVendorField('${v.id}', 'bankName', this.innerText)" contenteditable="true">${v.bankName || ''}</span></td>
                 <td><span class="editable" onblur="updateVendorField('${v.id}', 'branchName', this.innerText)" contenteditable="true">${v.branchName || ''}</span></td>
                 <td><span class="editable" onblur="updateVendorField('${v.id}', 'bankCode', this.innerText)" contenteditable="true">${v.bankCode || ''}</span></td>
                 <td><span class="editable" onblur="updateVendorField('${v.id}', 'account', this.innerText)" contenteditable="true">${v.account || ''}</span></td>
-                <td><div class="vendor-owner-cell"><span class="editable" onblur="updateVendorField('${v.id}', 'owner', this.innerText)" contenteditable="true">${v.owner || ''}</span><button class="btn-copy-small" title="複製戶名" aria-label="複製戶名" onclick="copyVendorOwner('${v.id}', this)">📋</button></div></td>
+                <td><div class="vendor-owner-cell"><span class="editable" onblur="updateVendorField('${v.id}', 'owner', this.innerText)" contenteditable="true">${v.owner || ''}</span><button class="btn-copy-small" title="複製戶名" aria-label="複製戶名" onclick="copyVendorOwner('${v.id}', this)">${uiIcon('copy')}</button></div></td>
                 <td class="action-cell vendor-action-col">
-                    <button class="btn-del" onclick="deleteVendor('${v.id}')">×</button>
+                    <button class="btn-del" title="刪除廠商" aria-label="刪除廠商" onclick="deleteVendor('${v.id}')">${uiIcon('x')}</button>
                 </td>
             </tr>
         `).join('');
@@ -805,9 +822,7 @@
         textArea.select();
         try {
             document.execCommand('copy');
-            const originalText = btn.innerText;
-            btn.innerText = '✅';
-            setTimeout(() => { btn.innerText = originalText; }, 1200);
+            showCopyFeedback(btn);
         } catch (err) {}
         document.body.removeChild(textArea);
     }
@@ -1122,11 +1137,11 @@
         textArea.select();
         try {
             document.execCommand('copy');
-            const originalText = btn.innerText;
-            btn.innerText = "✅ 已成功複製明細";
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = `${uiIcon('check')} 已成功複製明細`;
             btn.style.background = "#1b5e20";
             setTimeout(() => { 
-                btn.innerText = originalText; 
+                btn.innerHTML = originalHtml;
                 btn.style.background = "var(--success)";
             }, 1500);
         } catch (err) {}
@@ -1412,8 +1427,8 @@ function toggleSort(field) {
                 <td class="bank-col"><span class="editable" onblur="updateField('${item.id}', 'owner', this.innerText)" contenteditable="true">${item.owner || ''}</span></td>
                 <td><span class="editable" onblur="updateField('${item.id}', 'company', this.innerText)" contenteditable="true">${item.company || ''}</span></td>
                 <td class="action-cell">
-                    <button class="btn-edit-tool" onclick="editRecord('${item.id}')">✎</button>
-                    <button class="btn-del" onclick="deleteRecord('${item.id}')">×</button>
+                    <button class="btn-edit-tool" title="編輯" aria-label="編輯" onclick="editRecord('${item.id}')">${uiIcon('pencil')}</button>
+                    <button class="btn-del" title="刪除" aria-label="刪除" onclick="deleteRecord('${item.id}')">${uiIcon('x')}</button>
                 </td>
             `;
             tr.ondragstart = (e) => { e.dataTransfer.setData('text/plain', item.id); e.target.classList.add('dragging'); };
@@ -1497,7 +1512,7 @@ function toggleSort(field) {
             copyNameButton.type = 'button';
             copyNameButton.title = '複製公司名稱';
             copyNameButton.setAttribute('aria-label', '複製公司名稱');
-            copyNameButton.textContent = '📋';
+            copyNameButton.innerHTML = uiIcon('copy');
             copyNameButton.onclick = () => copyVendorText(result.name, copyNameButton);
 
             const taxIdLine = document.createElement('div');
@@ -1510,7 +1525,7 @@ function toggleSort(field) {
             copyTaxIdButton.type = 'button';
             copyTaxIdButton.title = '複製統編';
             copyTaxIdButton.setAttribute('aria-label', '複製統編');
-            copyTaxIdButton.textContent = '📋';
+            copyTaxIdButton.innerHTML = uiIcon('copy');
             copyTaxIdButton.onclick = () => copyVendorText(result.taxId, copyTaxIdButton);
 
             nameLine.append(name, copyNameButton);
@@ -1745,11 +1760,11 @@ function toggleSort(field) {
         textArea.select();
         try {
             document.execCommand('copy');
-            const originalText = btn.innerText;
-            btn.innerText = "✅ 已成功複製";
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = `${uiIcon('check')} 已成功複製`;
             const oldBg = btn.style.background;
             btn.style.background = "#1b5e20"; 
-            setTimeout(() => { btn.innerText = originalText; btn.style.background = oldBg; }, 2000);
+            setTimeout(() => { btn.innerHTML = originalHtml; btn.style.background = oldBg; }, 2000);
         } catch (err) {}
         document.body.removeChild(textArea);
     }
