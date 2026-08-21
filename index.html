@@ -153,6 +153,7 @@
         #vendorTable .vendor-row-copy-col { width: 38px; }
         #vendorTable .vendor-branch-col { width: 12ch; }
         #vendorTable .vendor-code-col { width: 10ch; }
+        #vendorTable .vendor-tax-col { width: 9ch; }
         #vendorTable .vendor-action-col { width: 38px; }
         #vendorTable td { word-break: break-all; }
         .btn-copy-small { border: 1px solid var(--info); background: white; color: var(--info); border-radius: 4px; padding: 3px 6px; cursor: pointer; font-size: 0.72rem; font-weight: bold; white-space: nowrap; }
@@ -188,6 +189,8 @@
                 <input type="hidden" id="tempBankCode">
                 <input type="hidden" id="tempAccount">
                 <input type="hidden" id="tempOwner">
+                <input type="hidden" id="tempVendorName">
+                <input type="hidden" id="tempTaxId">
             </div>
         </div>
 
@@ -382,6 +385,7 @@
             <div class="section-title" style="border-left: 4px solid var(--accent); color: var(--accent);">手動新增廠商</div>
             <div class="row">
                 <div class="col"><label>廠商名稱</label><input type="text" id="newVName" placeholder="公司名"></div>
+                <div class="col"><label>公司統編（選填）</label><input type="text" id="newVTaxId" inputmode="numeric" maxlength="8" placeholder="8碼統編"></div>
                 <div class="col"><label>銀行</label><input type="text" id="newVBankName" placeholder="例如：第一銀行"></div>
                 <div class="col"><label>分行</label><input type="text" id="newVBranchName" placeholder="例如：中山分行"></div>
             </div>
@@ -404,13 +408,14 @@
             </div>
         </div>
         <div style="margin: 0 0 12px;">
-            <input type="search" id="vendorListSearch" placeholder="搜尋廠商、銀行、分行、解款行、帳號或戶名..." oninput="renderVendorTable(this.value)">
+            <input type="search" id="vendorListSearch" placeholder="搜尋廠商、統編、銀行、分行、解款行、帳號或戶名..." oninput="renderVendorTable(this.value)">
         </div>
         <table id="vendorTable">
             <thead>
                 <tr>
                     <th class="vendor-row-copy-col" title="整列複製">📋</th>
                     <th style="width: 16%;">廠商名稱</th>
+                    <th class="vendor-tax-col">統編</th>
                     <th style="width: 12%;">銀行</th>
                     <th class="vendor-branch-col">分行</th>
                     <th class="vendor-code-col">解款行</th>
@@ -510,9 +515,11 @@
         document.getElementById('tempBankCode').value = "";
         document.getElementById('tempAccount').value = "";
         document.getElementById('tempOwner').value = "";
+        document.getElementById('tempVendorName').value = "";
+        document.getElementById('tempTaxId').value = "";
         const resultsDiv = document.getElementById('searchResults');
         if (!val) { resultsDiv.style.display = 'none'; return; }
-        const filtered = vendors.filter(v => v.name.includes(val) || v.owner.includes(val) || (v.account && v.account.includes(val)));
+        const filtered = vendors.filter(v => v.name.includes(val) || v.owner.includes(val) || (v.account && v.account.includes(val)) || (v.taxId && v.taxId.includes(val)));
         if (filtered.length > 0) {
             resultsDiv.innerHTML = filtered.map(v => `
                 <div class="search-item" onclick="selectVendor('${v.id}')">
@@ -529,11 +536,13 @@
     function selectVendor(id) {
         const vendor = vendors.find(v => v.id == id);
         if (!vendor) return;
-        const { name, bankCode: bank, account: acc, owner, bankName, branchName } = vendor;
+        const { name, bankCode: bank, account: acc, owner, bankName, branchName, taxId } = vendor;
         document.getElementById('vendorSearch').value = name;
         document.getElementById('tempBankCode').value = bank || "";
         document.getElementById('tempAccount').value = acc || "";
         document.getElementById('tempOwner').value = owner || "";
+        document.getElementById('tempVendorName').value = name || "";
+        document.getElementById('tempTaxId').value = taxId || "";
         document.getElementById('searchResults').style.display = 'none';
 
         const bankLocation = [bankName, branchName].filter(Boolean).join(' ');
@@ -647,16 +656,18 @@
 
     function manualAddVendor() {
         const name = document.getElementById('newVName').value.trim();
+        const taxId = document.getElementById('newVTaxId').value.trim();
         const bankName = document.getElementById('newVBankName').value.trim();
         const branchName = document.getElementById('newVBranchName').value.trim();
         const bank = document.getElementById('newVBank').value.trim();
         const acc = document.getElementById('newVAcc').value.trim();
         const owner = document.getElementById('newVOwner').value.trim();
         if(!name || !acc) { alert("廠商名稱與帳號為必填！"); return; }
-        vendors.push({ id: Date.now() + Math.random(), name, bankName, branchName, bankCode: bank, account: acc, owner });
+        if (taxId && !/^\d{8}$/.test(taxId)) { alert("公司統編請填寫8碼數字，或留白不填。"); return; }
+        vendors.push({ id: Date.now() + Math.random(), name, taxId, bankName, branchName, bankCode: bank, account: acc, owner });
         localStorage.setItem('vendorList', JSON.stringify(vendors));
         renderVendorTable();
-        ['newVName', 'newVBankName', 'newVBranchName', 'newVBank', 'newVAcc', 'newVOwner'].forEach(id => document.getElementById(id).value = "");
+        ['newVName', 'newVTaxId', 'newVBankName', 'newVBranchName', 'newVBank', 'newVAcc', 'newVOwner'].forEach(id => document.getElementById(id).value = "");
         alert("廠商新增成功！");
     }
 
@@ -730,7 +741,9 @@
 
             rows.slice(1).forEach(row => {
                 const cols = parseCSVRow(row);
-                if (cols.length >= 6) {
+                if (cols.length >= 7) {
+                    vendors.push({ id: Date.now() + Math.random(), name: cols[0], bankName: cols[1], branchName: cols[2], bankCode: cols[3], account: cols[4], owner: cols[5], taxId: cols[6] });
+                } else if (cols.length >= 6) {
                     vendors.push({ id: Date.now() + Math.random(), name: cols[0], bankName: cols[1], branchName: cols[2], bankCode: cols[3], account: cols[4], owner: cols[5] });
                 } else if (cols.length >= 4) {
                     vendors.push({ id: Date.now() + Math.random(), name: cols[0], bankCode: cols[1], account: cols[2], owner: cols[3] });
@@ -746,9 +759,9 @@
 
     function exportVendorExcel() {
         if(vendors.length === 0) return alert("目前無廠商資料可匯出");
-        let csvContent = "\ufeff廠商名稱,銀行,分行,解款行,帳號,戶名\n";
+        let csvContent = "\ufeff廠商名稱,銀行,分行,解款行,帳號,戶名,公司統編\n";
         vendors.forEach(v => {
-            csvContent += [v.name, v.bankName, v.branchName, v.bankCode, v.account, v.owner]
+            csvContent += [v.name, v.bankName, v.branchName, v.bankCode, v.account, v.owner, v.taxId]
                 .map(value => `"${String(value || '').replace(/"/g, '""')}"`).join(',') + '\n';
         });
         const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -762,13 +775,14 @@
         const tbody = document.getElementById('vendorTableBody');
         const keyword = searchValue.trim().toLowerCase();
         const filteredVendors = vendors.filter(v => !keyword ||
-            [v.name, v.bankName, v.branchName, v.bankCode, v.account, v.owner]
+            [v.name, v.taxId, v.bankName, v.branchName, v.bankCode, v.account, v.owner]
                 .some(value => String(value || '').toLowerCase().includes(keyword))
         );
         tbody.innerHTML = filteredVendors.map(v => `
             <tr>
                 <td class="action-cell vendor-row-copy-col"><button class="btn-copy-small" title="整列複製" aria-label="整列複製" onclick="copyVendorRow('${v.id}', this)">📋</button></td>
                 <td><span class="editable" onblur="updateVendorField('${v.id}', 'name', this.innerText)" contenteditable="true">${v.name}</span></td>
+                <td><span class="editable" onblur="updateVendorTaxId('${v.id}', this)" contenteditable="true">${v.taxId || ''}</span></td>
                 <td><span class="editable" onblur="updateVendorField('${v.id}', 'bankName', this.innerText)" contenteditable="true">${v.bankName || ''}</span></td>
                 <td><span class="editable" onblur="updateVendorField('${v.id}', 'branchName', this.innerText)" contenteditable="true">${v.branchName || ''}</span></td>
                 <td><span class="editable" onblur="updateVendorField('${v.id}', 'bankCode', this.innerText)" contenteditable="true">${v.bankCode || ''}</span></td>
@@ -780,7 +794,7 @@
             </tr>
         `).join('');
         if (filteredVendors.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#888; padding:20px;">找不到符合的廠商資料</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#888; padding:20px;">找不到符合的廠商資料</td></tr>';
         }
     }
 
@@ -815,6 +829,19 @@
     function updateVendorField(id, field, value) {
         const idx = vendors.findIndex(v => v.id == id);
         if(idx !== -1) { vendors[idx][field] = value.trim(); localStorage.setItem('vendorList', JSON.stringify(vendors)); }
+    }
+
+    function updateVendorTaxId(id, el) {
+        const idx = vendors.findIndex(v => v.id == id);
+        if (idx === -1) return;
+        const value = el.innerText.trim();
+        if (value && !/^\d{8}$/.test(value)) {
+            alert('公司統編請填寫8碼數字，或留白不填。');
+            el.innerText = vendors[idx].taxId || '';
+            return;
+        }
+        vendors[idx].taxId = value;
+        localStorage.setItem('vendorList', JSON.stringify(vendors));
     }
 
     function deleteVendor(id) {
@@ -1203,6 +1230,8 @@
             bank: document.getElementById('tempBankCode').value || "", 
             acc: document.getElementById('tempAccount').value || "", 
             owner: document.getElementById('tempOwner').value || "", 
+            vendorName: document.getElementById('tempVendorName').value || "",
+            taxId: document.getElementById('tempTaxId').value || "",
             formula: document.getElementById('processFormula').innerHTML, 
             saveMonth: saveMonthLabel,
             settings: settings 
@@ -1258,7 +1287,7 @@
     }
 
     function clearInputFields(keptBaseDate, keptDocType, keptTaxMode, keptPrefix) {
-        ['vendorSearch', 'workNote', 'inputAmount', 'rawAmount', 'taxAmount', 'cleanFeeAmount', 'retentionAmount', 'adjustmentNote', 'adjustmentAmount', 'netAmount', 'p1Pct', 'p1Mon', 'p2Pct', 'p2Mon', 'tempBankCode', 'tempAccount', 'tempOwner'].forEach(id => {
+        ['vendorSearch', 'workNote', 'inputAmount', 'rawAmount', 'taxAmount', 'cleanFeeAmount', 'retentionAmount', 'adjustmentNote', 'adjustmentAmount', 'netAmount', 'p1Pct', 'p1Mon', 'p2Pct', 'p2Mon', 'tempBankCode', 'tempAccount', 'tempOwner', 'tempVendorName', 'tempTaxId'].forEach(id => {
             const el = document.getElementById(id);
             if(el) {
                 if (id === 'workNote') el.value = keptPrefix || "";
@@ -1533,7 +1562,18 @@ function toggleSort(field) {
         if(record) {
             document.getElementById('modalBody').innerHTML = record.formula;
             document.getElementById('infoModal').style.display = 'flex';
-            lookupCompanyByOwner(record.owner);
+            const normalizeAccount = value => String(value || '').replace(/[^0-9]/g, '');
+            const account = normalizeAccount(record.acc);
+            const matchedVendor = vendors.find(v => account && normalizeAccount(v.account) === account)
+                || vendors.find(v => record.owner && v.owner === record.owner);
+            const savedTaxId = record.taxId || matchedVendor?.taxId || '';
+            const savedCompanyName = matchedVendor?.name || record.vendorName || getCompanySearchCandidates(record.owner)[0]?.query || '';
+
+            if (savedTaxId && savedCompanyName) {
+                renderCompanyLookupResults([{ name: savedCompanyName, taxId: savedTaxId }]);
+            } else {
+                lookupCompanyByOwner(record.owner);
+            }
         }
     }
     function updateField(id, field, value) {
@@ -1560,9 +1600,14 @@ function toggleSort(field) {
 
         document.getElementById('companySelect').value = item.company || "瀞川";
         document.getElementById('vendorSearch').value = item.owner || "";
+        const editAccount = String(item.acc || '').replace(/[^0-9]/g, '');
+        const currentVendor = vendors.find(v => editAccount && String(v.account || '').replace(/[^0-9]/g, '') === editAccount)
+            || vendors.find(v => item.owner && v.owner === item.owner);
         document.getElementById('tempBankCode').value = item.bank || "";
         document.getElementById('tempAccount').value = item.acc || "";
         document.getElementById('tempOwner').value = item.owner || "";
+        document.getElementById('tempVendorName').value = currentVendor?.name || item.vendorName || "";
+        document.getElementById('tempTaxId').value = currentVendor?.taxId || item.taxId || "";
 
         document.getElementById('displayBankCode').innerText = item.bank || "無";
         document.getElementById('displayAccount').innerText = item.acc || "無";
