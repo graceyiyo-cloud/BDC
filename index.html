@@ -174,6 +174,7 @@
     <symbol id="icon-check" viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"></path></symbol>
     <symbol id="icon-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.986L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path><path d="m15 5 4 4"></path></symbol>
     <symbol id="icon-x" viewBox="0 0 24 24"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></symbol>
+    <symbol id="icon-download" viewBox="0 0 24 24"><path d="M12 15V3"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></symbol>
 </svg>
 
 <div class="tabs">
@@ -346,7 +347,7 @@
         <div class="section-title">付款清單明細</div>
         <div class="filter-row">
             <div class="filter-group">
-                <label style="margin:0">月份：</label>
+                <label style="margin:0">資料月份（含以前）：</label>
                 <select id="filterMonth" style="width: auto; padding: 5px; font-weight: bold;" onchange="renderTable()"></select>
                 <label style="margin:0; margin-left:10px;">公司：</label>
                 <select id="filterCompany" style="width: auto; padding: 5px; font-weight: bold;" onchange="renderTable()">
@@ -356,13 +357,14 @@
                     <option value="長川">長川</option>
                     <option value="上川">上川</option>
                 </select>
-                <label style="margin:0; margin-left:10px;">日期篩選：</label>
-                <input type="text" id="filterDate" placeholder="輸入日期(如11502)" style="width: 130px; padding: 5px; font-weight: bold;" oninput="renderTable()">
+                <label style="margin:0; margin-left:10px;">付款日期：</label>
+                <input type="text" id="filterDate" inputmode="numeric" placeholder="1150615 或 11506" style="width: 155px; padding: 5px; font-weight: bold;" oninput="renderTable()">
             </div>
             <div class="button-cluster">
                 <button class="btn-info" id="btnToggleCols" style="background: #8e44ad;" onclick="toggleBankCols()">顯示銀行資訊</button>
                 <button class="btn-info" id="btnCopyClaim" style="background: #34495e;" onclick="copyToClipboard('claim', this)"><svg class="ui-icon" aria-hidden="true"><use href="#icon-copy"></use></svg>複製請款明細 (貼Excel)</button>
                 <button class="btn-info" id="btnCopyBank" style="background: #a67c52;" onclick="copyToClipboard('bank', this)"><svg class="ui-icon" aria-hidden="true"><use href="#icon-copy"></use></svg>複製匯款資料 (貼Excel)</button>
+                <button class="btn-info" style="background: #376b78;" onclick="exportFilteredRecordsExcel()"><svg class="ui-icon" aria-hidden="true"><use href="#icon-download"></use></svg>匯出查詢結果</button>
                 <button class="btn-info" style="background: #16a085;" onclick="autoFillRecordsByOwner()">按戶名補齊資料</button>
                 <button class="btn-save" style="background: #a93226; width: auto; padding: 10px 20px; margin: 0;" onclick="clearData()">清空所有排程</button>
             </div>
@@ -1328,21 +1330,25 @@
         if (keptTaxMode) setTaxMode(keptTaxMode);
     }
 
+    function matchesListFilters(item) {
+        const filterComp = document.getElementById('filterCompany').value;
+        const filterMonthVal = document.getElementById('filterMonth').value;
+        const filterDateVal = document.getElementById('filterDate').value.replace(/[^0-9]/g, '');
+        const matchComp = filterComp === '全部' || item.company === filterComp;
+        const matchMon = filterMonthVal === '全部' || (item.saveMonth && item.saveMonth <= filterMonthVal);
+        const matchDate = !filterDateVal || String(item.date || '').includes(filterDateVal);
+        return matchComp && matchMon && matchDate;
+    }
+
+    function getFilteredRecords() {
+        return db.filter(matchesListFilters);
+    }
+
 function toggleSort(field) {
     currentSortOrder = (currentSortOrder === 'asc') ? 'desc' : 'asc';
 
-    // 1. 取得目前的篩選條件（公司、月份、日期）
-    const filterComp = document.getElementById('filterCompany').value;
-    const filterMonthVal = document.getElementById('filterMonth').value;
-    const filterDateVal = document.getElementById('filterDate').value.trim();
-
     // 2. 找出畫面上符合篩選條件的資料
-    const filteredItems = db.filter(item => {
-        const matchComp = (filterComp === "全部" || item.company === filterComp);
-        const matchMon = (filterMonthVal === "全部" || item.saveMonth === filterMonthVal);
-        const matchDate = (!filterDateVal || item.date.includes(filterDateVal));
-        return matchComp && matchMon && matchDate;
-    });
+    const filteredItems = getFilteredRecords();
 
     // 3. 只針對這些篩選出來的資料進行排序
     filteredItems.sort((a, b) => {
@@ -1354,10 +1360,7 @@ function toggleSort(field) {
     // 4. 將排序後的結果，依序塞回總資料庫中屬於它們原本的位子（不影響其他未顯示的資料）
     let filterIndex = 0;
     db = db.map(item => {
-        const matchComp = (filterComp === "全部" || item.company === filterComp);
-        const matchMon = (filterMonthVal === "全部" || item.saveMonth === filterMonthVal);
-        const matchDate = (!filterDateVal || item.date.includes(filterDateVal));
-        if (matchComp && matchMon && matchDate) {
+        if (matchesListFilters(item)) {
             return filteredItems[filterIndex++];
         }
         return item;
@@ -1383,15 +1386,7 @@ function toggleSort(field) {
     }
 
     function updateSummary() {
-        const filterComp = document.getElementById('filterCompany').value;
-        const filterMonthVal = document.getElementById('filterMonth').value;
-        const filterDateVal = document.getElementById('filterDate').value.trim();
-        const filtered = db.filter(item => {
-            const matchComp = (filterComp === "全部" || item.company === filterComp);
-            const matchMon = (filterMonthVal === "全部" || item.saveMonth === filterMonthVal);
-            const matchDate = (!filterDateVal || item.date.includes(filterDateVal));
-            return matchComp && matchMon && matchDate;
-        });
+        const filtered = getFilteredRecords();
         let filteredSum = 0;
         let checkedSum = 0;
         filtered.forEach(i => {
@@ -1403,18 +1398,10 @@ function toggleSort(field) {
     }
 
     function renderTable() {
-        const filterComp = document.getElementById('filterCompany').value;
-        const filterMonthVal = document.getElementById('filterMonth').value;
-        const filterDateVal = document.getElementById('filterDate').value.trim();
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = "";
         let counter = 1;
-        const filtered = db.filter(item => {
-            const matchComp = (filterComp === "全部" || item.company === filterComp);
-            const matchMon = (filterMonthVal === "全部" || item.saveMonth === filterMonthVal);
-            const matchDate = (!filterDateVal || item.date.includes(filterDateVal));
-            return matchComp && matchMon && matchDate;
-        });
+        const filtered = getFilteredRecords();
 
         filtered.forEach(item => {
             if (!checkedIds.has(item.id) && document.getElementById('selectAll').checked) checkedIds.add(item.id);
@@ -1717,15 +1704,7 @@ function toggleSort(field) {
     function clearData() { if(confirm("【警告】確定要清空所有的付款排程資料嗎？此操作不可還原。")) { db = []; checkedIds.clear(); localStorage.removeItem('paymentRecords'); renderTable(); } }
     
     function copyToClipboard(type, btn) {
-        const filterComp = document.getElementById('filterCompany').value;
-        const filterMonthVal = document.getElementById('filterMonth').value;
-        const filterDateVal = document.getElementById('filterDate').value.trim();
-        const filtered = db.filter(item => {
-            const matchComp = (filterComp === "全部" || item.company === filterComp);
-            const matchMon = (filterMonthVal === "全部" || item.saveMonth === filterMonthVal);
-            const matchDate = (!filterDateVal || item.date.includes(filterDateVal));
-            return matchComp && matchMon && matchDate && checkedIds.has(item.id);
-        });
+        const filtered = getFilteredRecords().filter(item => checkedIds.has(item.id));
         if (filtered.length === 0) return;
         
         const grouped = [];
@@ -1800,6 +1779,32 @@ function toggleSort(field) {
             setTimeout(() => { btn.innerHTML = originalHtml; btn.style.background = oldBg; }, 2000);
         } catch (err) {}
         document.body.removeChild(textArea);
+    }
+
+    function exportFilteredRecordsExcel() {
+        const filtered = getFilteredRecords();
+        if (filtered.length === 0) {
+            alert('目前的查詢條件沒有可匯出的付款資料。');
+            return;
+        }
+
+        const toCsvCell = value => {
+            let cell = String(value ?? '');
+            if (/^[=+\-@]/.test(cell)) cell = `'${cell}`;
+            return `"${cell.replace(/"/g, '""')}"`;
+        };
+        const headers = ['資料月份', '付款日期', '付款公司', '明細內容', '金額', '匯款戶名'];
+        const rows = filtered.map(item => [item.saveMonth, item.date, item.company, item.desc, item.amount, item.owner]);
+        const csvContent = '\ufeff' + [headers, ...rows].map(row => row.map(toCsvCell).join(',')).join('\r\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const month = document.getElementById('filterMonth').value === '全部' ? '全部月份' : `${document.getElementById('filterMonth').value}以前`;
+        const paymentDate = document.getElementById('filterDate').value.replace(/[^0-9]/g, '') || '全部付款日';
+        link.href = url;
+        link.download = `付款查詢_${month}_${paymentDate}.csv`;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
     function initMonthFilter() {
