@@ -130,8 +130,16 @@
         .button-cluster { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 12px; }
 
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
-        .modal-content { background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 450px; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        .modal-content { background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 620px; max-height: 85vh; overflow-y: auto; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
         .close-modal { position: absolute; right: 15px; top: 15px; font-size: 1.5rem; cursor: pointer; color: #999; }
+        .company-lookup-box { background: #F4F4F1; border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 18px; }
+        .company-owner-line { margin-bottom: 8px; font-size: 0.95rem; }
+        .company-search-hint { color: #777; font-size: 0.78rem; margin-bottom: 8px; }
+        .company-result-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: white; border: 1px solid #DDD; border-radius: 6px; padding: 8px 10px; margin-top: 6px; }
+        .company-result-info { min-width: 0; }
+        .company-result-name { font-weight: bold; color: var(--text); }
+        .company-result-tax-id { color: var(--accent); font-family: monospace; margin-top: 2px; }
+        .company-lookup-source { margin-top: 8px; color: #888; font-size: 0.72rem; }
         
         .draggable-row { transition: background 0.2s; }
         .draggable-row.dragging { opacity: 0.5; background: #f0f0f0; }
@@ -420,6 +428,13 @@
 <div id="infoModal" class="modal" onclick="document.getElementById('infoModal').style.display='none'">
     <div class="modal-content" onclick="event.stopPropagation()">
         <span class="close-modal" onclick="document.getElementById('infoModal').style.display='none'">&times;</span>
+        <div class="section-title">匯款戶名與公司統編</div>
+        <div class="company-lookup-box">
+            <div class="company-owner-line">匯款戶名：<strong id="modalOwner">-</strong></div>
+            <div id="companySearchHint" class="company-search-hint"></div>
+            <div id="companyLookupResults">請稍候，正在搜尋公司資料…</div>
+            <div class="company-lookup-source">資料來源：經濟部、財政部公開資料（<a href="https://company.g0v.ronny.tw/" target="_blank" rel="noopener noreferrer">台灣公司資料 API</a>）</div>
+        </div>
         <div class="section-title">計算過程紀錄</div>
         <div id="modalBody" class="formula"></div>
     </div>
@@ -436,6 +451,7 @@
     let currentTaxMode = '未稅';
     let currentCalcBase = '未稅'; 
     let editingGroupId = null;
+    const companyLookupCache = new Map();
 
     let lastCalcState = { 
         raw: 0, tax: 0, total: 0, cRate: 0, cleanFee: 0, subtotal: 0, rRate: 0, retention: 0, 
@@ -1398,9 +1414,128 @@ function toggleSort(field) {
         localStorage.setItem('paymentRecords', JSON.stringify(db));
         renderTable();
     }
+    function getCompanySearchCandidates(owner) {
+        const normalized = String(owner || '').replace(/[\s　]+/g, '').trim();
+        if (!normalized) return [];
+        const longSuffixes = [
+            '股份有限公司', '有限公司', '有限合夥', '分公司', '企業社', '工程行',
+            '實業社', '工作室', '工業社', '商行', '商號', '事務所', '補習班',
+            '診所', '藥局', '餐廳', '小吃店', '商店'
+        ];
+        const candidates = [];
+        let suffixEnd = 0;
+        for (const suffix of longSuffixes) {
+            const index = normalized.lastIndexOf(suffix);
+            if (index > 0) suffixEnd = Math.max(suffixEnd, index + suffix.length);
+        }
+        if (suffixEnd === 0) {
+            for (const suffix of ['行', '店', '廠', '社']) {
+                const index = normalized.lastIndexOf(suffix);
+                if (index > 0) suffixEnd = Math.max(suffixEnd, index + suffix.length);
+            }
+        }
+        if (suffixEnd > 0) {
+            const query = normalized.slice(0, suffixEnd);
+            candidates.push({ query, removedPerson: normalized.slice(query.length) });
+        }
+        candidates.push({ query: normalized, removedPerson: '' });
+        [3, 2, 4].forEach(length => {
+            if (normalized.length > length + 1) {
+                candidates.push({ query: normalized.slice(0, -length), removedPerson: normalized.slice(-length) });
+            }
+        });
+        return candidates.filter((candidate, index, all) =>
+            candidate.query && all.findIndex(item => item.query === candidate.query) === index
+        );
+    }
+
+    function getCompanyResultInfo(item) {
+        return {
+            name: item['公司名稱'] || item['商業名稱'] || item['名稱'] || item['財政部']?.['營業人名稱'] || '',
+            taxId: String(item['統一編號'] || ''),
+            responsible: item['代表人姓名'] || item['負責人姓名'] || ''
+        };
+    }
+
+    function renderCompanyLookupResults(results) {
+        const container = document.getElementById('companyLookupResults');
+        container.innerHTML = '';
+        results.forEach(result => {
+            const row = document.createElement('div');
+            row.className = 'company-result-row';
+            const info = document.createElement('div');
+            info.className = 'company-result-info';
+            const name = document.createElement('div');
+            name.className = 'company-result-name';
+            name.textContent = result.name;
+            const taxId = document.createElement('div');
+            taxId.className = 'company-result-tax-id';
+            taxId.textContent = `統編：${result.taxId}`;
+            const copyButton = document.createElement('button');
+            copyButton.className = 'btn-copy-small';
+            copyButton.type = 'button';
+            copyButton.title = '複製公司名稱與統編';
+            copyButton.setAttribute('aria-label', '複製公司名稱與統編');
+            copyButton.textContent = '📋';
+            copyButton.onclick = () => copyVendorText(`${result.name}\t${result.taxId}`, copyButton);
+            info.append(name, taxId);
+            row.append(info, copyButton);
+            container.appendChild(row);
+        });
+    }
+
+    async function lookupCompanyByOwner(owner) {
+        const resultsContainer = document.getElementById('companyLookupResults');
+        const hint = document.getElementById('companySearchHint');
+        const candidates = getCompanySearchCandidates(owner);
+        if (candidates.length === 0) {
+            hint.textContent = '';
+            resultsContainer.textContent = '此筆資料沒有匯款戶名，無法搜尋統編。';
+            return;
+        }
+
+        resultsContainer.textContent = '請稍候，正在搜尋公司資料…';
+        hint.textContent = '';
+        try {
+            for (const candidate of candidates) {
+                let rawResults = companyLookupCache.get(candidate.query);
+                if (!rawResults) {
+                    const response = await fetch(`https://company.g0v.ronny.tw/api/search?q=${encodeURIComponent(candidate.query)}`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const data = await response.json();
+                    rawResults = Array.isArray(data.data) ? data.data : [];
+                    companyLookupCache.set(candidate.query, rawResults);
+                }
+
+                let results = rawResults.map(getCompanyResultInfo).filter(item => item.name && item.taxId);
+                const exactResults = results.filter(item => item.name.replace(/[\s　]+/g, '') === candidate.query);
+                if (exactResults.length > 0) results = exactResults;
+                else if (candidate.removedPerson) results = [];
+                results = results.filter((item, index, all) => all.findIndex(other => other.taxId === item.taxId) === index).slice(0, 5);
+
+                if (results.length > 0) {
+                    hint.textContent = candidate.query === String(owner || '').replace(/[\s　]+/g, '')
+                        ? `搜尋名稱：${candidate.query}`
+                        : `已移除戶名後方負責人姓名，搜尋：${candidate.query}`;
+                    renderCompanyLookupResults(results);
+                    return;
+                }
+            }
+            hint.textContent = `已嘗試搜尋：${candidates.map(item => item.query).join('、')}`;
+            resultsContainer.textContent = '查不到相符的公司或行號統編。';
+        } catch (error) {
+            resultsContainer.textContent = '公司統編查詢暫時無法連線，請稍後再試。';
+        }
+    }
+
     function showFormula(id) {
         const record = db.find(i => i.id === id);
-        if(record) { document.getElementById('modalBody').innerHTML = record.formula; document.getElementById('infoModal').style.display = 'flex'; }
+        if(record) {
+            document.getElementById('modalOwner').innerText = record.owner || '無';
+            document.getElementById('modalBody').innerHTML = record.formula;
+            document.getElementById('infoModal').style.display = 'flex';
+            lookupCompanyByOwner(record.owner);
+        }
     }
     function updateField(id, field, value) {
         const idx = db.findIndex(i => i.id === id);
