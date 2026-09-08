@@ -455,8 +455,11 @@
         <div class="section-title">付款清單明細</div>
         <div class="filter-row">
             <div class="filter-group">
-                <label style="margin:0">資料月份（含以前）：</label>
+                <label style="margin:0">資料月份：</label>
                 <select id="filterMonth" style="width: auto; padding: 5px; font-weight: bold;" onchange="renderTable()"></select>
+                <label class="check-label" style="margin:0; font-size:0.82rem; white-space:nowrap;">
+                    <input type="checkbox" id="includeEarlierMonths" checked onchange="renderTable()"> 含以前月份
+                </label>
                 <label style="margin:0; margin-left:10px;">公司：</label>
                 <select id="filterCompany" style="width: auto; padding: 5px; font-weight: bold;" onchange="renderTable()">
                     <option value="全部">全部顯示</option>
@@ -1441,9 +1444,12 @@
     function matchesListFilters(item) {
         const filterComp = document.getElementById('filterCompany').value;
         const filterMonthVal = document.getElementById('filterMonth').value;
+        const includeEarlierMonths = document.getElementById('includeEarlierMonths').checked;
         const filterDateVal = document.getElementById('filterDate').value.replace(/[^0-9]/g, '');
         const matchComp = filterComp === '全部' || item.company === filterComp;
-        const matchMon = filterMonthVal === '全部' || (item.saveMonth && item.saveMonth <= filterMonthVal);
+        const matchMon = filterMonthVal === '全部' || (item.saveMonth && (includeEarlierMonths
+            ? item.saveMonth <= filterMonthVal
+            : item.saveMonth === filterMonthVal));
         const matchDate = !filterDateVal || String(item.date || '').includes(filterDateVal);
         return matchComp && matchMon && matchDate;
     }
@@ -1907,7 +1913,10 @@ function toggleSort(field) {
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        const month = document.getElementById('filterMonth').value === '全部' ? '全部月份' : `${document.getElementById('filterMonth').value}以前`;
+        const selectedMonth = document.getElementById('filterMonth').value;
+        const month = selectedMonth === '全部'
+            ? '全部月份'
+            : `${selectedMonth}${document.getElementById('includeEarlierMonths').checked ? '以前' : '當月'}`;
         const paymentDate = document.getElementById('filterDate').value.replace(/[^0-9]/g, '') || '全部付款日';
         link.href = url;
         link.download = `付款查詢_${month}_${paymentDate}.csv`;
