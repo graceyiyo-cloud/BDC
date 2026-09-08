@@ -6,16 +6,16 @@
     <title>工程階層結算系統</title>
     <style>
         :root {
-            --bg: #F4F6F5;
-            --card: #FFFFFF;
-            --primary: #6D7850;
-            --accent: #8D6E50;
-            --text: #2D2D2D;
-            --border: #C0BEB3;
-            --danger: #c0392b;
-            --success: #1b5e20;
-            --info: #3d868a;
-            --dark: #1a252f;
+            --bg: #EFECE4;
+            --card: #FBFAF6;
+            --primary: #596B5F;
+            --accent: #9B7558;
+            --text: #383B38;
+            --border: #D4CEC1;
+            --danger: #A35F55;
+            --success: #647B68;
+            --info: #657B7C;
+            --dark: #46534E;
         }
 
         body { background-color: var(--bg); color: var(--text); font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; margin: 0; padding: 10px 130px 15px 15px; display: flex; flex-direction: column; align-items: center; box-sizing: border-box; min-height: 100vh; overflow-x: hidden; }
@@ -164,6 +164,114 @@
         .btn-copy-small { border: 1px solid var(--info); background: white; color: var(--info); border-radius: 4px; padding: 3px 6px; cursor: pointer; font-size: 0.72rem; font-weight: bold; white-space: nowrap; }
         .vendor-owner-cell { display: flex; align-items: center; gap: 4px; }
         .vendor-owner-cell .editable { flex: 1; min-width: 0; }
+
+        /* 暖紙感、低彩度的文青風主題 */
+        body {
+            background-color: var(--bg);
+            background-image:
+                radial-gradient(circle at 12% 8%, rgba(255, 255, 255, 0.72), transparent 30%),
+                linear-gradient(135deg, rgba(89, 107, 95, 0.035), rgba(155, 117, 88, 0.025));
+            background-attachment: fixed;
+            color: var(--text);
+            letter-spacing: 0.015em;
+        }
+        h2 {
+            color: var(--primary);
+            font-family: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
+            font-size: 1.55rem;
+            letter-spacing: 0.14em;
+            margin-bottom: 28px;
+        }
+        h2::after {
+            content: "";
+            display: block;
+            width: 42px;
+            height: 1px;
+            margin: 12px auto 0;
+            background: var(--accent);
+            opacity: 0.7;
+        }
+        .tabs {
+            background: rgba(63, 73, 68, 0.96);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            box-shadow: 0 10px 28px rgba(55, 58, 53, 0.16);
+        }
+        .tab-btn {
+            color: #C9D0CB;
+            border-color: rgba(255, 255, 255, 0.09);
+            letter-spacing: 0.08em;
+        }
+        .tab-btn:hover { background: rgba(255, 255, 255, 0.07); color: #FFFDF8; }
+        .tab-btn.active { background: #718075; color: #FFFDF8; }
+        label { color: #686C66; letter-spacing: 0.04em; }
+        input, select {
+            background: rgba(255, 255, 255, 0.66);
+            border-color: var(--border);
+            border-radius: 6px;
+            color: var(--text);
+        }
+        input::placeholder { color: #A39F96; }
+        input:focus, select:focus {
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 0 0 3px rgba(89, 107, 95, 0.11);
+        }
+        .section-title {
+            color: var(--primary);
+            border-left-width: 3px;
+            font-family: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
+            letter-spacing: 0.09em;
+        }
+        .list-card > .section-title { font-size: 1.15rem; margin-bottom: 20px; }
+        .config-box, .vendor-form, .display-area, #vendorBankInfo {
+            background: rgba(251, 250, 246, 0.58) !important;
+            border: 1px solid rgba(190, 182, 166, 0.72);
+            border-radius: 7px;
+            box-shadow: none;
+        }
+        .payment-box { border-top-color: rgba(89, 107, 95, 0.55); }
+        .toggle-group { background: rgba(220, 218, 208, 0.68); border-color: var(--border); border-radius: 6px; }
+        .toggle-btn { border-radius: 4px; color: #797B76; }
+        .toggle-btn.active { background: #FBFAF6; color: var(--primary); box-shadow: 0 2px 8px rgba(72, 69, 61, 0.09); }
+        #netAmount { color: #76563F; background: #F4EADF; border-color: #B99A7E; }
+        .subtotal-line { background: #DFE4DC; }
+        table { border-collapse: collapse; }
+        th {
+            background: #DDE2DA;
+            color: #414A43;
+            border-color: #C8CEC5;
+            font-family: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
+            letter-spacing: 0.05em;
+        }
+        td { background: rgba(255, 255, 255, 0.38); border-color: rgba(199, 194, 183, 0.82); }
+        tbody tr:nth-child(even) td { background: rgba(248, 246, 239, 0.68); }
+        tbody tr:hover td { background: rgba(230, 234, 226, 0.78); }
+        .editable {
+            background: transparent;
+            border: 1px solid transparent;
+            border-bottom-color: rgba(155, 117, 88, 0.3);
+            border-radius: 2px;
+        }
+        .editable:focus { background: #FFFDF8; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(155, 117, 88, 0.1); }
+        .btn-save, .btn-excel, .btn-info, .btn-reset {
+            border-radius: 6px;
+            letter-spacing: 0.035em;
+            box-shadow: 0 3px 10px rgba(69, 68, 61, 0.08);
+            transition: transform 0.18s ease, opacity 0.18s ease, box-shadow 0.18s ease;
+        }
+        .btn-save:hover, .btn-excel:hover, .btn-info:hover, .btn-reset:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 14px rgba(69, 68, 61, 0.12);
+        }
+        .btn-reset { background: #E5E1D7; color: #62635E; }
+        .btn-calc, .btn-edit-tool, .btn-copy-small { background: rgba(251, 250, 246, 0.86); }
+        .summary-bar { background: #E3E4DC; border-color: #CAC8BE; color: var(--text); border-radius: 6px; }
+        .summary-bar strong { color: #8C6248; text-shadow: none; }
+        .search-results { background: #FBFAF6; border: 1px solid #9AA69C; border-radius: 6px; box-shadow: 0 12px 28px rgba(56, 59, 56, 0.15); }
+        .search-item:hover { background: #E7EBE4; }
+        .modal { background: rgba(42, 47, 44, 0.48); backdrop-filter: blur(2px); }
+        .modal-content { background: #F8F6EF; border: 1px solid #D7D0C2; border-radius: 9px; box-shadow: 0 20px 55px rgba(39, 42, 39, 0.22); }
     </style>
 </head>
 <body>
@@ -361,12 +469,12 @@
                 <input type="text" id="filterDate" inputmode="numeric" placeholder="1150615 或 11506" style="width: 155px; padding: 5px; font-weight: bold;" oninput="renderTable()">
             </div>
             <div class="button-cluster">
-                <button class="btn-info" id="btnToggleCols" style="background: #8e44ad;" onclick="toggleBankCols()">顯示銀行資訊</button>
-                <button class="btn-info" id="btnCopyClaim" style="background: #34495e;" onclick="copyToClipboard('claim', this)"><svg class="ui-icon" aria-hidden="true"><use href="#icon-copy"></use></svg>複製請款明細 (貼Excel)</button>
-                <button class="btn-info" id="btnCopyBank" style="background: #a67c52;" onclick="copyToClipboard('bank', this)"><svg class="ui-icon" aria-hidden="true"><use href="#icon-copy"></use></svg>複製匯款資料 (貼Excel)</button>
-                <button class="btn-info" style="background: #376b78;" onclick="exportFilteredRecordsExcel()"><svg class="ui-icon" aria-hidden="true"><use href="#icon-download"></use></svg>匯出查詢結果</button>
-                <button class="btn-info" style="background: #16a085;" onclick="autoFillRecordsByOwner()">按戶名補齊資料</button>
-                <button class="btn-save" style="background: #a93226; width: auto; padding: 10px 20px; margin: 0;" onclick="clearData()">清空所有排程</button>
+                <button class="btn-info" id="btnToggleCols" style="background: #758174;" onclick="toggleBankCols()">顯示銀行資訊</button>
+                <button class="btn-info" id="btnCopyClaim" style="background: #52635D;" onclick="copyToClipboard('claim', this)"><svg class="ui-icon" aria-hidden="true"><use href="#icon-copy"></use></svg>複製請款明細 (貼Excel)</button>
+                <button class="btn-info" id="btnCopyBank" style="background: #96745C;" onclick="copyToClipboard('bank', this)"><svg class="ui-icon" aria-hidden="true"><use href="#icon-copy"></use></svg>複製匯款資料 (貼Excel)</button>
+                <button class="btn-info" style="background: #657B7C;" onclick="exportFilteredRecordsExcel()"><svg class="ui-icon" aria-hidden="true"><use href="#icon-download"></use></svg>匯出查詢結果</button>
+                <button class="btn-info" style="background: #6E8376;" onclick="autoFillRecordsByOwner()">按戶名補齊資料</button>
+                <button class="btn-save" style="background: #9B6258; width: auto; padding: 10px 20px; margin: 0;" onclick="clearData()">清空所有排程</button>
             </div>
         </div>
         <table id="recordTable">
