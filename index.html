@@ -272,6 +272,25 @@
         .search-item:hover { background: #E7EBE4; }
         .modal { background: rgba(42, 47, 44, 0.48); backdrop-filter: blur(2px); }
         .modal-content { background: #F8F6EF; border: 1px solid #D7D0C2; border-radius: 9px; box-shadow: 0 20px 55px rgba(39, 42, 39, 0.22); }
+        #listPage .button-cluster { margin-top: 8px; gap: 7px; }
+        #listPage .button-cluster .btn-info,
+        #listPage .button-cluster .btn-save {
+            width: auto;
+            margin: 0;
+            padding: 7px 11px !important;
+            border-radius: 5px;
+            font-size: 0.76rem;
+            line-height: 1.25;
+            box-shadow: 0 2px 6px rgba(69, 68, 61, 0.07);
+        }
+        #listPage .button-cluster .ui-icon { width: 14px; height: 14px; }
+        #listPage .button-cluster .btn-save {
+            color: var(--danger);
+            background: rgba(163, 95, 85, 0.07) !important;
+            border: 1px solid rgba(163, 95, 85, 0.48);
+        }
+        #listPage .button-cluster .btn-info:hover,
+        #listPage .button-cluster .btn-save:hover { box-shadow: 0 4px 10px rgba(69, 68, 61, 0.11); }
     </style>
 </head>
 <body>
@@ -476,7 +495,6 @@
                 <button class="btn-info" id="btnCopyClaim" style="background: #52635D;" onclick="copyToClipboard('claim', this)"><svg class="ui-icon" aria-hidden="true"><use href="#icon-copy"></use></svg>複製請款明細 (貼Excel)</button>
                 <button class="btn-info" id="btnCopyBank" style="background: #96745C;" onclick="copyToClipboard('bank', this)"><svg class="ui-icon" aria-hidden="true"><use href="#icon-copy"></use></svg>複製匯款資料 (貼Excel)</button>
                 <button class="btn-info" style="background: #657B7C;" onclick="exportFilteredRecordsExcel()"><svg class="ui-icon" aria-hidden="true"><use href="#icon-download"></use></svg>匯出查詢結果</button>
-                <button class="btn-info" style="background: #6E8376;" onclick="autoFillRecordsByOwner()">按戶名補齊資料</button>
                 <button class="btn-save" style="background: #9B6258; width: auto; padding: 10px 20px; margin: 0;" onclick="clearData()">清空所有排程</button>
             </div>
         </div>
@@ -769,25 +787,6 @@
             } catch (err) { alert("讀取檔案失敗：" + err); }
         };
         reader.readAsText(file);
-    }
-
-    function autoFillRecordsByOwner() {
-        let count = 0;
-        db.forEach(item => {
-            if ((!item.bank || !item.acc) && item.owner) {
-                const match = vendors.find(v => v.owner === item.owner.trim());
-                if (match) {
-                    item.bank = match.bankCode;
-                    item.acc = match.account;
-                    count++;
-                }
-            }
-        });
-        if (count > 0) {
-            localStorage.setItem('paymentRecords', JSON.stringify(db));
-            renderTable();
-            alert(`成功補齊 ${count} 筆匯款資料！`);
-        } else { alert("未找到相符戶名的廠商資料。"); }
     }
 
     function manualAddVendor() {
