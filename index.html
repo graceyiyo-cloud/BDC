@@ -495,6 +495,7 @@
                 <button class="btn-info" id="btnCopyClaim" style="background: #52635D;" onclick="copyToClipboard('claim', this)"><svg class="ui-icon" aria-hidden="true"><use href="#icon-copy"></use></svg>複製請款明細 (貼Excel)</button>
                 <button class="btn-info" id="btnCopyBank" style="background: #96745C;" onclick="copyToClipboard('bank', this)"><svg class="ui-icon" aria-hidden="true"><use href="#icon-copy"></use></svg>複製匯款資料 (貼Excel)</button>
                 <button class="btn-info" style="background: #657B7C;" onclick="exportFilteredRecordsExcel()"><svg class="ui-icon" aria-hidden="true"><use href="#icon-download"></use></svg>匯出查詢結果</button>
+                <button class="btn-info" style="background: #746C61;" onclick="exportAccountsPayableExcel(this)" title="匯出所選月份月底尚未付款的款項"><svg class="ui-icon" aria-hidden="true"><use href="#icon-download"></use></svg>匯出應付帳款</button>
                 <button class="btn-save" style="background: #9B6258; width: auto; padding: 10px 20px; margin: 0;" onclick="clearData()">清空所有排程</button>
             </div>
         </div>
@@ -1921,6 +1922,130 @@ function toggleSort(field) {
         link.download = `付款查詢_${month}_${paymentDate}.csv`;
         link.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function getMonthIndex(monthLabel) {
+        const match = /^(\d{4})\.(\d{2})$/.exec(String(monthLabel || ''));
+        if (!match) return null;
+        const year = Number(match[1]);
+        const month = Number(match[2]);
+        return month >= 1 && month <= 12 ? year * 12 + month - 1 : null;
+    }
+
+    function getPaymentMonthIndex(rocDate) {
+        const digits = String(rocDate || '').replace(/\D/g, '');
+        const match = /^(\d{3})(\d{2})(\d{2})$/.exec(digits);
+        if (!match) return null;
+        const year = Number(match[1]) + 1911;
+        const month = Number(match[2]);
+        const day = Number(match[3]);
+        const date = new Date(year, month - 1, day);
+        if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+        return year * 12 + month - 1;
+    }
+
+    function getAccountsPayableRecords(selectedMonth, selectedCompany) {
+        const cutoffMonthIndex = getMonthIndex(selectedMonth);
+        if (cutoffMonthIndex === null) return [];
+
+        return db.filter(item => {
+            const dataMonthIndex = getMonthIndex(item.saveMonth);
+            const paymentMonthIndex = getPaymentMonthIndex(item.date);
+            const matchesCompany = selectedCompany === '全部' || item.company === selectedCompany;
+            return matchesCompany
+                && dataMonthIndex !== null
+                && dataMonthIndex <= cutoffMonthIndex
+                && paymentMonthIndex !== null
+                && paymentMonthIndex > cutoffMonthIndex;
+        }).sort((a, b) => String(a.date || '').localeCompare(String(b.date || ''), 'zh-TW')
+            || String(a.company || '').localeCompare(String(b.company || ''), 'zh-TW')
+            || String(a.desc || '').localeCompare(String(b.desc || ''), 'zh-TW'));
+    }
+
+    let sheetJsLoadPromise = null;
+
+    function loadSheetJs() {
+        if (window.XLSX) return Promise.resolve(window.XLSX);
+        if (sheetJsLoadPromise) return sheetJsLoadPromise;
+
+        sheetJsLoadPromise = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.id = 'sheetJsLibrary';
+            script.src = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+            script.onload = () => {
+                if (window.XLSX) resolve(window.XLSX);
+                else {
+                    script.remove();
+                    sheetJsLoadPromise = null;
+                    reject(new Error('Excel 匯出元件無法使用'));
+                }
+            };
+            script.onerror = () => {
+                script.remove();
+                sheetJsLoadPromise = null;
+                reject(new Error('Excel 匯出元件載入失敗'));
+            };
+            document.head.appendChild(script);
+        });
+        return sheetJsLoadPromise;
+    }
+
+    async function exportAccountsPayableExcel(button) {
+        const selectedMonth = document.getElementById('filterMonth').value;
+        if (selectedMonth === '全部') {
+            alert('請先選擇一個資料月份，再匯出應付帳款。');
+            return;
+        }
+
+        const selectedCompany = document.getElementById('filterCompany').value;
+        const records = getAccountsPayableRecords(selectedMonth, selectedCompany);
+        if (records.length === 0) {
+            alert(`${selectedMonth} 月底沒有符合條件的未付應付帳款。`);
+            return;
+        }
+
+        const originalHtml = button.innerHTML;
+        button.disabled = true;
+        button.textContent = '產生中...';
+
+        try {
+            const XLSX = await loadSheetJs();
+            const headers = ['資料月份', '付款日期', '付款公司', '明細內容', '應付金額', '解款行', '帳號', '匯款戶名'];
+            const rows = records.map(item => [
+                String(item.saveMonth || ''),
+                String(item.date || ''),
+                String(item.company || ''),
+                String(item.desc || ''),
+                Number(item.amount) || 0,
+                String(item.bank || ''),
+                String(item.acc || ''),
+                String(item.owner || '')
+            ]);
+            const total = rows.reduce((sum, row) => sum + row[4], 0);
+            const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows, ['', '', '', '合計', total, '', '', '']]);
+            worksheet['!cols'] = [
+                { wch: 11 }, { wch: 11 }, { wch: 10 }, { wch: 52 },
+                { wch: 14 }, { wch: 11 }, { wch: 20 }, { wch: 24 }
+            ];
+            worksheet['!autofilter'] = { ref: `A1:H${rows.length + 1}` };
+            for (let row = 2; row <= rows.length + 2; row++) {
+                const cell = worksheet[`E${row}`];
+                if (cell) cell.z = '#,##0';
+            }
+
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, '應付帳款');
+            const companySuffix = selectedCompany === '全部' ? '' : `_${selectedCompany}`;
+            XLSX.writeFile(workbook, `應付帳款_${selectedMonth}月底${companySuffix}.xlsx`, { compression: true });
+            button.innerHTML = `${uiIcon('check')} 已匯出`;
+            setTimeout(() => { button.innerHTML = originalHtml; }, 1800);
+        } catch (error) {
+            console.error(error);
+            button.innerHTML = originalHtml;
+            alert('無法產生 Excel 檔，請確認網路連線後再試一次。');
+        } finally {
+            button.disabled = false;
+        }
     }
 
     function initMonthFilter() {
