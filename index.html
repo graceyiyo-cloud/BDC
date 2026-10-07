@@ -477,7 +477,7 @@
                 <label style="margin:0">資料月份：</label>
                 <select id="filterMonth" style="width: auto; padding: 5px; font-weight: bold;" onchange="renderTable()"></select>
                 <label class="check-label" style="margin:0; font-size:0.82rem; white-space:nowrap;">
-                    <input type="checkbox" id="includeEarlierMonths" checked onchange="renderTable()"> 含以前月份
+                    <input type="checkbox" id="includeEarlierMonths" onchange="renderTable()"> 含以前月份
                 </label>
                 <label style="margin:0; margin-left:10px;">公司：</label>
                 <select id="filterCompany" style="width: auto; padding: 5px; font-weight: bold;" onchange="renderTable()">
@@ -2010,24 +2010,21 @@ function toggleSort(field) {
 
         try {
             const XLSX = await loadSheetJs();
-            const headers = ['資料月份', '付款日期', '付款公司', '明細內容', '應付金額', '解款行', '帳號', '匯款戶名'];
+            const headers = ['資料月份', '付款日期', '付款公司', '明細內容', '應付金額'];
             const rows = records.map(item => [
                 String(item.saveMonth || ''),
                 String(item.date || ''),
                 String(item.company || ''),
                 String(item.desc || ''),
-                Number(item.amount) || 0,
-                String(item.bank || ''),
-                String(item.acc || ''),
-                String(item.owner || '')
+                Number(item.amount) || 0
             ]);
             const total = rows.reduce((sum, row) => sum + row[4], 0);
-            const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows, ['', '', '', '合計', total, '', '', '']]);
+            const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows, ['', '', '', '合計', total]]);
             worksheet['!cols'] = [
                 { wch: 11 }, { wch: 11 }, { wch: 10 }, { wch: 52 },
-                { wch: 14 }, { wch: 11 }, { wch: 20 }, { wch: 24 }
+                { wch: 14 }
             ];
-            worksheet['!autofilter'] = { ref: `A1:H${rows.length + 1}` };
+            worksheet['!autofilter'] = { ref: `A1:E${rows.length + 1}` };
             for (let row = 2; row <= rows.length + 2; row++) {
                 const cell = worksheet[`E${row}`];
                 if (cell) cell.z = '#,##0';
