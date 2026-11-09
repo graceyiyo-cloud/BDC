@@ -164,6 +164,12 @@
         .btn-copy-small { border: 1px solid var(--info); background: white; color: var(--info); border-radius: 4px; padding: 3px 6px; cursor: pointer; font-size: 0.72rem; font-weight: bold; white-space: nowrap; }
         .vendor-owner-cell { display: flex; align-items: center; gap: 4px; }
         .vendor-owner-cell .editable { flex: 1; min-width: 0; }
+        .bank-suggest-col { position: relative; }
+        .bank-suggest-col .search-results { left: auto; right: 0; min-width: 100%; width: max-content; max-width: min(320px, calc(100vw - 30px)); box-sizing: border-box; }
+        .bank-suggest-item { display: flex; gap: 10px; align-items: baseline; padding: 10px 12px; }
+        .bank-suggest-code { font-family: monospace; color: var(--accent); flex: 0 0 auto; }
+        .search-item.active { background: #E7EBE4; color: var(--primary); }
+        input.auto-filled { background: #EEF2EB; border-color: #9AA69C; }
 
         /* 暖紙感、低彩度的文青風主題 */
         body {
@@ -531,11 +537,11 @@
             <div class="row">
                 <div class="col"><label>廠商名稱</label><input type="text" id="newVName" placeholder="公司名"></div>
                 <div class="col"><label>公司統編（選填）</label><input type="text" id="newVTaxId" inputmode="numeric" maxlength="8" placeholder="8碼統編"></div>
-                <div class="col"><label>銀行</label><input type="text" id="newVBankName" placeholder="例如：第一銀行"></div>
-                <div class="col"><label>分行</label><input type="text" id="newVBranchName" placeholder="例如：中山分行"></div>
+                <div class="col bank-suggest-col"><label>銀行</label><input type="text" id="newVBankName" placeholder="例如：第一銀行" autocomplete="off"><div id="bankSuggest" class="search-results" role="listbox"></div></div>
+                <div class="col bank-suggest-col"><label>分行</label><input type="text" id="newVBranchName" placeholder="例如：中山分行" autocomplete="off"><div id="branchSuggest" class="search-results" role="listbox"></div></div>
             </div>
             <div class="row">
-                <div class="col"><label>解款行</label><input type="text" id="newVBank" placeholder="例如：0071234"></div>
+                <div class="col"><label>解款行</label><input type="text" id="newVBank" placeholder="例如：0071234" inputmode="numeric" maxlength="7"></div>
                 <div class="col"><label>收款帳號</label><input type="text" id="newVAcc" placeholder="銀行帳號"></div>
                 <div class="col"><label>收款戶名</label><input type="text" id="newVOwner" placeholder="戶名"></div>
             </div>
@@ -587,6 +593,7 @@
     </div>
 </div>
 
+<script src="bank-codes.js"></script>
 <script>
     const fmt = new Intl.NumberFormat('zh-TW');
     let db = JSON.parse(localStorage.getItem('paymentRecords')) || [];
@@ -804,7 +811,160 @@
         localStorage.setItem('vendorList', JSON.stringify(vendors));
         renderVendorTable();
         ['newVName', 'newVTaxId', 'newVBankName', 'newVBranchName', 'newVBank', 'newVAcc', 'newVOwner'].forEach(id => document.getElementById(id).value = "");
+        markBankCodeAuto(false);
         alert("廠商新增成功！");
+    }
+
+    // ===== 銀行／分行 → 7碼解款行代號（資料：bank-codes.js，財金公司 twd.txt） =====
+    const BankLookup = (() => {
+        const clean = s => String(s || '').replace(/[\s　]/g, '').replace(/台/g, '臺').replace(/（/g, '(').replace(/）/g, ')');
+        const bankCore = s => clean(s).replace(/股份有限公司|\(臺灣\)|國際|商業|儲蓄/g, '');
+        const branchCore = s => clean(s).replace(/(分行|分社|分部|分會|辦事處)$/, '');
+        const extraAliases = { '700': ['郵局', '郵政', '中華郵政'] };
+        const banks = (window.BANK_CODES || []).map(([code, name, short, branches], order) => ({
+            code, name, short, order,
+            keys: [code, clean(name), clean(short), bankCore(name), ...(extraAliases[code] || [])].filter(Boolean),
+            branches: branches.map(([suffix, branchName], i) => ({
+                code: code + suffix, suffix, name: branchName, order: i,
+                keys: [code + suffix, suffix, clean(branchName), branchCore(branchName)].filter(Boolean)
+            }))
+        })).filter(b => b.branches.length);
+        const byCode = new Map(banks.map(b => [b.code, b]));
+
+        const score = (keys, q) => {
+            const qc = clean(q);
+            if (!qc) return 1;
+            const qCores = [qc, bankCore(q), branchCore(q)];
+            if (keys.some(k => qCores.includes(k))) return 0;
+            if (keys.some(k => k.startsWith(qc))) return 1;
+            if (keys.some(k => k.includes(qc))) return 2;
+            return -1;
+        };
+        const rank = (items, q) => items
+            .map(item => ({ item, s: score(item.keys, q) }))
+            .filter(r => r.s >= 0)
+            .sort((a, b) => a.s - b.s || a.item.order - b.item.order);
+        const pickUnique = ranked => {
+            if (ranked.length === 1) return ranked[0].item;
+            if (ranked.length && ranked[0].s === 0 && ranked[1].s !== 0) return ranked[0].item;
+            return null;
+        };
+
+        const searchBanks = q => rank(banks, q).map(r => r.item);
+        const searchBranches = (bank, q) => bank ? rank(bank.branches, q).map(r => r.item) : [];
+        const resolveBank = q => clean(q) ? pickUnique(rank(banks, q)) : null;
+        const resolveBranch = (bank, q) => bank && clean(q) ? pickUnique(rank(bank.branches, q)) : null;
+        const resolve = (bankText, branchText) => {
+            const bank = resolveBank(bankText);
+            return { bank, branch: resolveBranch(bank, branchText) };
+        };
+        const findByCode = code7 => {
+            const bank = byCode.get(String(code7).slice(0, 3));
+            const branch = bank && bank.branches.find(b => b.code === code7);
+            return branch ? { bank, branch } : null;
+        };
+        return { ready: banks.length > 0, searchBanks, searchBranches, resolveBank, resolve, findByCode };
+    })();
+
+    function escBankText(s) {
+        return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function attachBankSuggest(input, box, getItems, onPick) {
+        let items = [];
+        let index = -1;
+        const isOpen = () => box.style.display === 'block';
+        const close = () => { box.style.display = 'none'; index = -1; };
+        const highlight = () => {
+            box.querySelectorAll('.search-item').forEach((el, i) => el.classList.toggle('active', i === index));
+            const el = box.children[index];
+            if (el) el.scrollIntoView({ block: 'nearest' });
+        };
+        const open = () => {
+            items = getItems(input.value);
+            if (!items.length) return close();
+            box.innerHTML = items.map((it, i) =>
+                `<div class="search-item bank-suggest-item" role="option" data-i="${i}"><span class="bank-suggest-code">${it.code}</span><span>${escBankText(it.name)}</span></div>`
+            ).join('');
+            box.style.display = 'block';
+            box.scrollTop = 0;
+            index = -1;
+        };
+        const pick = i => { const it = items[i]; if (!it) return; close(); onPick(it); };
+        box.addEventListener('mousedown', e => e.preventDefault());
+        box.addEventListener('click', e => { const el = e.target.closest('.search-item'); if (el) pick(+el.dataset.i); });
+        input.addEventListener('input', open);
+        input.addEventListener('focus', open);
+        input.addEventListener('blur', close);
+        input.addEventListener('keydown', e => {
+            if (!isOpen()) return;
+            if (e.key === 'ArrowDown') { e.preventDefault(); index = Math.min(index + 1, items.length - 1); highlight(); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); index = Math.max(index - 1, 0); highlight(); }
+            else if (e.key === 'Enter' && index >= 0) { e.preventDefault(); pick(index); }
+            else if (e.key === 'Escape') { e.preventDefault(); close(); }
+        });
+    }
+
+    function markBankCodeAuto(isAuto) {
+        const codeInput = document.getElementById('newVBank');
+        codeInput.classList.toggle('auto-filled', isAuto);
+        if (isAuto) codeInput.dataset.auto = '1'; else delete codeInput.dataset.auto;
+    }
+
+    function syncVendorBankCode() {
+        const codeInput = document.getElementById('newVBank');
+        const { branch } = BankLookup.resolve(
+            document.getElementById('newVBankName').value,
+            document.getElementById('newVBranchName').value
+        );
+        const canOverwrite = !codeInput.value.trim() || codeInput.dataset.auto === '1';
+        if (branch && canOverwrite) {
+            codeInput.value = branch.code;
+            markBankCodeAuto(true);
+        } else if (!branch && codeInput.dataset.auto === '1') {
+            codeInput.value = '';
+            markBankCodeAuto(false);
+        }
+    }
+
+    function initBankAutocomplete() {
+        if (!BankLookup.ready) return;
+        const bankInput = document.getElementById('newVBankName');
+        const branchInput = document.getElementById('newVBranchName');
+        const codeInput = document.getElementById('newVBank');
+
+        attachBankSuggest(bankInput, document.getElementById('bankSuggest'),
+            q => BankLookup.searchBanks(q).slice(0, 40),
+            bank => { bankInput.value = bank.name; syncVendorBankCode(); branchInput.focus(); });
+        attachBankSuggest(branchInput, document.getElementById('branchSuggest'),
+            q => BankLookup.searchBranches(BankLookup.resolveBank(bankInput.value), q).slice(0, 400),
+            branch => { branchInput.value = branch.name; syncVendorBankCode(); });
+
+        bankInput.addEventListener('input', syncVendorBankCode);
+        branchInput.addEventListener('input', syncVendorBankCode);
+        codeInput.addEventListener('input', () => {
+            markBankCodeAuto(false);
+            const code = codeInput.value.trim();
+            if (!/^\d{7}$/.test(code) || bankInput.value.trim() || branchInput.value.trim()) return;
+            const found = BankLookup.findByCode(code);
+            if (found) { bankInput.value = found.bank.name; branchInput.value = found.branch.name; }
+        });
+    }
+
+    function updateVendorBankField(id, field, el) {
+        const vendor = vendors.find(v => v.id == id);
+        if (!vendor) return;
+        // 解款行為空，或原本就和舊的銀行＋分行一致時，才跟著更新；手動填的不一致代號不覆蓋
+        const oldCode = String(vendor.bankCode || '').trim();
+        const oldBranch = BankLookup.resolve(vendor.bankName, vendor.branchName).branch;
+        updateVendorField(id, field, el.innerText);
+        if (oldCode && oldCode !== oldBranch?.code) return;
+        const { branch } = BankLookup.resolve(vendor.bankName, vendor.branchName);
+        if (!branch || branch.code === oldCode) return;
+        vendor.bankCode = branch.code;
+        localStorage.setItem('vendorList', JSON.stringify(vendors));
+        const codeCell = el.closest('tr')?.querySelector('[data-field="bankCode"]');
+        if (codeCell) codeCell.innerText = branch.code;
     }
 
     function importVendorCSV(input) {
@@ -919,9 +1079,9 @@
                 <td class="action-cell vendor-row-copy-col"><button class="btn-copy-small" title="整列複製" aria-label="整列複製" onclick="copyVendorRow('${v.id}', this)">${uiIcon('copy')}</button></td>
                 <td><span class="editable" onblur="updateVendorField('${v.id}', 'name', this.innerText)" contenteditable="true">${v.name}</span></td>
                 <td><span class="editable" onblur="updateVendorTaxId('${v.id}', this)" contenteditable="true">${v.taxId || ''}</span></td>
-                <td><span class="editable" onblur="updateVendorField('${v.id}', 'bankName', this.innerText)" contenteditable="true">${v.bankName || ''}</span></td>
-                <td><span class="editable" onblur="updateVendorField('${v.id}', 'branchName', this.innerText)" contenteditable="true">${v.branchName || ''}</span></td>
-                <td><span class="editable" onblur="updateVendorField('${v.id}', 'bankCode', this.innerText)" contenteditable="true">${v.bankCode || ''}</span></td>
+                <td><span class="editable" onblur="updateVendorBankField('${v.id}', 'bankName', this)" contenteditable="true">${v.bankName || ''}</span></td>
+                <td><span class="editable" onblur="updateVendorBankField('${v.id}', 'branchName', this)" contenteditable="true">${v.branchName || ''}</span></td>
+                <td><span class="editable" data-field="bankCode" onblur="updateVendorField('${v.id}', 'bankCode', this.innerText)" contenteditable="true">${v.bankCode || ''}</span></td>
                 <td><span class="editable" onblur="updateVendorField('${v.id}', 'account', this.innerText)" contenteditable="true">${v.account || ''}</span></td>
                 <td><div class="vendor-owner-cell"><span class="editable" onblur="updateVendorField('${v.id}', 'owner', this.innerText)" contenteditable="true">${v.owner || ''}</span><button class="btn-copy-small" title="複製戶名" aria-label="複製戶名" onclick="copyVendorOwner('${v.id}', this)">${uiIcon('copy')}</button></div></td>
                 <td class="action-cell vendor-action-col">
@@ -2063,7 +2223,7 @@ function toggleSort(field) {
         document.getElementById('baseDate').value = `${y}${m}${d}`;
     }
     document.addEventListener('click', e => { if (!e.target.closest('.col')) document.getElementById('searchResults').style.display = 'none'; });
-    window.onload = () => { db.forEach(i => checkedIds.add(i.id)); initMonthFilter(); initBaseDate(); calculate(); };
+    window.onload = () => { db.forEach(i => checkedIds.add(i.id)); initMonthFilter(); initBaseDate(); calculate(); initBankAutocomplete(); };
 </script>
 
 </body>
